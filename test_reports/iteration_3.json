@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration 3 testing: Found & fixed a CRITICAL backend bug in log_audit() (`return doc` referenced undefined `doc` → NameError → 500 on every admin PUT/POST/DELETE). After the fix, 39/39 backend pytest tests pass (added TestPromo, TestSocialProof, TestWATemplates, TestSubscribers, TestAudit, TestUpload — 17 new tests; existing 22 still pass). Frontend: PromoBanner with 4-cell countdown + close button renders, SocialProofToast rotates messages with close button, EmailSignup section works end-to-end (returns DUKKANK10-XXXXXX code with copy button), Admin has all 7 tabs with all 18 marketing testids OK, Audit tab shows 29 recent entries with search+refresh, Games edit dialog has game-image-upload-button + hidden file input + URL input.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "ALL admin PUT/POST/DELETE", "issue": "log_audit() had `return doc` after try/except where `doc` is undefined → NameError → 500 on every admin write. FIXED by removing the stray `return doc`. Audit entries were still being inserted (insert_one runs before the NameError), but the calling endpoint then crashed with 500 to the client.", "priority": "CRITICAL"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "EmailSignup section never renders by default", "issue": "App.js renders EmailSignup only via SECTION_RENDERERS['emailSignup'] inside the visibleSections.map loop, but server.py DEFAULT_SECTIONS does NOT include an 'emailSignup' entry. So fresh installs / after section reset, the section is invisible. To verify in UI testing I had to PUT /api/admin/sections with an 'emailSignup' item prepended. Recommend adding {id:'emailSignup', label:'اشترك بالنشرة', visible:true} to DEFAULT_SECTIONS OR rendering <EmailSignup /> outside the sections loop (like PromoBanner and SocialProofToast).", "affected_selectors": ["[data-testid='email-signup-section']"]}
+    ],
+    "design_issues": [
+      {"screen": "Admin Games → Edit dialog", "issues": ["Field labels are partially obscured (overlapping with the dark background) — the contrast / positioning of the labels above each input is hard to read in the dialog."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "[VERIFY FIX] log_audit `return doc` was removed by testing agent; confirm fix lands and there are no other accidental references. (root cause: stale code from earlier edit)",
+    "Add 'emailSignup' entry to DEFAULT_SECTIONS in /app/backend/server.py so the new section appears for fresh users, OR render <EmailSignup /> unconditionally in App.js (outside the SECTION_RENDERERS map).",
+    "Add data-testid to the per-game edit button in GamesTab (e.g., `game-edit-{id}`) — currently must rely on pencil-svg fallback which is fragile.",
+    "Optional UX polish: dark dialog labels in GamesTab edit dialog are hard to read."
+  ],
+  "critical_code_review_comments": [
+    "server.py `log_audit()` had `return doc` referring to an undefined variable (likely leftover from copy of strip_id). This single character-of-leftover-code broke EVERY admin write endpoint. Suggest adding a smoke test that does an admin PUT on /api/admin/promo as part of CI.",
+    "Default sections list and emailSignup decoupling — App.js gates rendering on the persisted /api/sections doc, which means any new section must also be added to DEFAULT_SECTIONS or it never appears for users who already have a persisted sections doc. The reset-to-default workflow then erases the new section if users reset.",
+    "All input validation looks fine (Pydantic models), image upload extension whitelist + 5MB cap are sensible, audit log is fire-and-forget. CORS uses split env var with `*` default — acceptable for now."
+  ],
+  "updated_files": [
+    "/app/backend/server.py (removed stray `return doc` in log_audit)",
+    "/app/backend/tests/backend_test.py (added TestPromo, TestSocialProof, TestWATemplates, TestSubscribers, TestAudit, TestUpload — 17 new tests)"
+  ],
+  "success_rate": {"backend": "100% (39/39 after fix)", "frontend": "100% on visible flows after sections workaround"},
+  "test_credentials": "admin@dukkank.com / omar512@@OoD (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Test subscribers (TEST_iter3_*@example.com) are created and cleaned up in TestSubscribers. After UI test, the test email was DELETEd. State has been reset: promo disabled, sections back to 9 defaults, social_proof reset to 10 default messages, wa_templates restored to originals.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend test file at /app/backend/tests/backend_test.py now has 39 tests (was 22). The log_audit `return doc` bug must remain fixed — if it regresses, ALL admin endpoints return 500 even though writes go through. The emailSignup section is NOT in DEFAULT_SECTIONS — main agent should fix this; until then UI tests need to PUT sections with an emailSignup entry to make the section render. Subscribers collection may contain old test@example.com — safe to ignore. Audit log accumulates entries across runs.",
+  "rca_of_the_issue": "Root cause: a leftover `return doc` line inside async def log_audit() referenced an undefined name `doc` (likely stale code from copy-pasting strip_id). Python only raises the NameError when execution reaches that line, which happens on every successful audit insert. Because `log_audit` is awaited from inside each admin endpoint, the exception propagates up and FastAPI returns 500 to the client — even though the DB insert succeeded. Reproduction: PUT /api/admin/promo with valid bearer → 500 + 'Internal Server Error' (pre-fix); audit entry visible in /api/admin/audit. Mitigation: removed the stray `return doc`. Added regression test (TestAudit.test_audit_records_admin_write + TestPromo.test_put_promo_persists_and_reset) that exercises an admin PUT which would have surfaced this on next iteration."
+}

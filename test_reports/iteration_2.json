@@ -1,0 +1,47 @@
+{
+  "summary": "Iteration 2 regression + new-feature testing for Dukkank. Extended backend pytest suite with 4 new tests for /api/sections endpoints — all 22/22 backend tests PASS (incl. previous 18 regressions). Frontend E2E verified: no lang-toggle anywhere, no SavingsCalculator text on homepage, Arabic RTL site renders correctly, admin login works, all 5 admin tabs present incl. new tab-sections, 9 draggable section rows with up/down/toggle testids work (reorder + visibility toggle + opacity-60 styling + save/reset buttons all functional), GamesTab editor shows the new 3-section layout (numbered sections 1/2/3) with all expected headers AND a live preview panel. Section integration verified: PUT /api/admin/sections with faq.visible=false → reload homepage → الأسئلة الشائعة gone. Reset of sections to defaults applied at end of test. Only minor finding: a leftover descriptive paragraph in BundleBuilder still mentions '+ بطاقة شحن' in its tagline even though the top-up cards themselves were removed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "BundleBuilder",
+        "issue": "Top-up cards were removed but the section tagline at line 167 of /app/frontend/src/components/BundleBuilder.jsx still reads 'ضمّ اشتراك + ألعاب + بطاقة شحن، وكل ما زدت عنصر زاد الخصم تلقائياً.' This is stale copy that references the removed top-up feature and should be edited to drop '+ بطاقة شحن' so the description matches the actual UI (only sub + games are buildable).",
+        "selector": "BundleBuilder section <p> tagline",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Edit /app/frontend/src/components/BundleBuilder.jsx line 167 to remove the '+ بطاقة شحن' phrase from the BundleBuilder tagline so the descriptive copy is consistent with the removed top-up feature."
+  ],
+  "critical_code_review_comments": [
+    "/api/sections + /api/admin/sections implementation is correct: defensive default returned when no DB doc exists, full payload replace pattern is idempotent, admin guard via get_current_admin works, response excludes _id (settings collection write via $set+upsert is correct).",
+    "Sections payload accepts arbitrary section ids without validation against DEFAULT_SECTIONS — fine for now but consider validating that all 9 known ids are present on PUT so admins cannot accidentally drop a section permanently.",
+    "Frontend SectionsTab properly uses data-testid attributes for every interactive element (section-{id}-up/down/toggle, sections-save, sections-reset, section-row-{id}) — excellent testability.",
+    "AdminDashboard adds the 5th tab cleanly with data-testid='tab-sections' alongside the original 4.",
+    "GamesTab editor refactor exposes 3 numbered sections with bold headers and a live preview card on the right — clear UX improvement and matches the spec.",
+    "ESLint warnings on useMemo deps remain non-blocking (carried over from iteration 1)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (extended: +TestSections class with 4 tests covering GET default, 401 on unauth PUT, reorder + visibility persistence with finally-reset, post-reset validation)"
+  ],
+  "success_rate": {
+    "backend": "100% (22/22 pytest)",
+    "frontend": "~95% (all spec items verified; one minor copy issue in BundleBuilder tagline)"
+  },
+  "test_credentials": "admin@dukkank.com / omar512@@OoD (verified working — same as iteration 1)",
+  "seed_data_creation": "None persisted. Sections were temporarily modified during tests and explicitly reset to defaults [recommender, essential, extra, comparison, bundles, bundleBuilder, games, reviews, faq] all visible=true at the end of both the pytest run and the Playwright integration run.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests at /app/backend/tests/backend_test.py — run: cd /app && python -m pytest backend/tests/backend_test.py -v. The new TestSections class always resets sections to defaults in finally blocks. Admin tab IDs: tab-store, tab-sections, tab-subscriptions, tab-games, tab-bundles. SectionsTab IDs: sections-tab, section-row-{id}, section-{id}-up, section-{id}-down, section-{id}-toggle, sections-save, sections-reset. Default section order is [recommender, essential, extra, comparison, bundles, bundleBuilder, games, reviews, faq]. If you mutate sections during testing, always reset before exit.",
+  "rca of the issue": "BundleBuilder copy issue: the top-up cards were removed but the descriptive paragraph at BundleBuilder.jsx:167 was not updated. The user reads 'ضمّ اشتراك + ألعاب + بطاقة شحن' but cannot actually add a 'بطاقة شحن' — small UX inconsistency. Fix: drop '+ بطاقة شحن' from that string. No backend or business-logic impact."
+}
