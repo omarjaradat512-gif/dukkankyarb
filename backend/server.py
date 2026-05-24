@@ -414,7 +414,7 @@ async def create_review(payload: Review, current=Depends(get_current_admin)):
     if await db.reviews.find_one({"id": payload.id}):
         raise HTTPException(400, "Review id already exists")
     doc = payload.model_dump()
-    if not doc.get("order"):
+    if doc.get("order") is None:
         doc["order"] = await db.reviews.count_documents({})
     await db.reviews.insert_one(doc)
     await log_audit(current, "create", "review", payload.id, payload.name)
@@ -451,7 +451,7 @@ async def create_faq(payload: FAQItem, current=Depends(get_current_admin)):
     if await db.faqs.find_one({"id": payload.id}):
         raise HTTPException(400, "FAQ id already exists")
     doc = payload.model_dump()
-    if not doc.get("order"):
+    if doc.get("order") is None:
         doc["order"] = await db.faqs.count_documents({})
     await db.faqs.insert_one(doc)
     await log_audit(current, "create", "faq", payload.id, payload.q[:60])
