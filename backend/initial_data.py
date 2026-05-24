@@ -41,6 +41,123 @@ INITIAL_STORE = {
     "instagram": "https://www.instagram.com/dukkank15/",
 }
 
+# ---------------------------------------------------------------------------
+# All static page copy — every string the customer sees on the homepage
+# can be edited from the admin "محتوى الموقع" tab. Keep keys flat-ish so the
+# admin UI can render a logical tree.
+# ---------------------------------------------------------------------------
+INITIAL_CONTENT = {
+    "hero": {
+        "badge": "متجر موثوق • تسليم فوري",
+        "titleLine1": "كل ألعابك واشتراكاتك",
+        "titleLine2": "بضغطة زر.",
+        "subtitle": "اشتراكات PlayStation Plus وألعاب رقمية أصلية بأفضل الأسعار، مع تسليم فوري ودعم مباشر على واتساب.",
+        "ctaBrowse": "تصفّح المنتجات",
+        "ctaWhatsApp": "راسلنا على واتساب",
+        "benefitInstant": "تسليم فوري",
+        "benefitOriginal": "حسابات أصلية",
+        "benefitSupport": "دعم مباشر",
+    },
+    "essential": {
+        "eyebrow": "الاشتراكات",
+        "title": "بلايستيشن بلس أساسي",
+        "description": "للاعب اللي بدو الأساسيات: ألعاب شهرية، أونلاين متعدد اللاعبين.",
+        "featureTitle": "ليش الاشتراك الأساسي؟",
+        "featureBullets": [
+            "اللعب أونلاين مع أصدقائك",
+            "ألعاب شهرية مجانية",
+        ],
+    },
+    "extra": {
+        "eyebrow": "الاشتراكات",
+        "title": "بلايستيشن بلس إضافي",
+        "description": "مكتبة أوسع تتجاوز ٤٠٠ لعبة من Sony وشركاء آخرين، بسعر يستاهل.",
+        "featureTitle": "ليش الاشتراك الإضافي؟",
+        "featureBullets": [
+            "مكتبة ضخمة (+400 لعبة)",
+            "تجارب لعب مجانية لألعاب مختارة",
+            "كل ميزات الأساسي",
+        ],
+    },
+    "comparison": {
+        "eyebrow": "مقارنة الباقات",
+        "title": "أساسي ولا إضافي؟ شو الفرق؟",
+        "description": "كل خطة لها نقاط قوتها — هاي مقارنة سريعة عشان تختار صح من أول مرة.",
+        "popularBadge": "الأكثر طلباً",
+        "essentialColLabel": "أساسي",
+        "extraColLabel": "إضافي",
+        "ctaStart": "جاهز تبدأ؟",
+        "ctaEssential": "اختر الأساسي",
+        "ctaExtra": "اختر الإضافي",
+        "rows": [
+            {"feature": "اللعب أونلاين متعدد اللاعبين", "essential": True, "extra": True},
+            {"feature": "ألعاب شهرية مجانية", "essential": True, "extra": True},
+            {"feature": "خصومات في المتجر", "essential": True, "extra": True},
+            {"feature": "تخزين سحابي للحفظ", "essential": True, "extra": True},
+            {"feature": "مكتبة +400 لعبة", "essential": False, "extra": True},
+            {"feature": "تجارب لعب مجانية مختارة", "essential": False, "extra": True},
+        ],
+    },
+    "bundles": {
+        "eyebrow": "باقات مدمجة",
+        "title": "خذ اشتراك + لعبة بسعر أقل",
+        "description": "وفّر أكثر مع باقاتنا الجاهزة — اشتراك مع لعبتك المفضّلة بسعر مدمج.",
+    },
+    "bundleBuilder": {
+        "eyebrow": "ابني باقتك",
+        "title": "اختار أنت، واحنا نخصملك",
+        "description": "ضمّ اشتراك + ألعاب، وكل ما زدت عنصر زاد الخصم تلقائياً.",
+        "discountsLabel": "نسب الخصم حسب الاشتراك والمدة",
+        "step1": "١) اختر جهازك",
+        "step1Hint": "السعر يتغير حسب الجهاز",
+        "step2": "٢) أضف اشتراك (اختياري)",
+        "step3": "٣) أضف ألعاب",
+        "summaryTitle": "ملخص باقتك",
+        "summaryEmpty": "لسه ما اخترت شي. ابدأ بإضافة اشتراك أو لعبة.",
+        "subtotal": "المجموع الفرعي",
+        "discountLabel": "خصم باقتك",
+        "totalLabel": "المجموع",
+        "hintNoSub": "💡 أضف اشتراك للحصول على خصم على كامل الباقة!",
+        "addAll": "أضف باقتك للسلة",
+        "addedAll": "أُضيفت!",
+        "reset": "ابدأ من جديد",
+    },
+    "games": {
+        "eyebrow": "ألعاب رقمية",
+        "title": "أبرز الألعاب المتاحة",
+        "description": "اضغط على أي لعبة لرؤية تفاصيلها الكاملة — تريلر، مواصفات، وألعاب مشابهة.",
+        "customGameTitle": "لعبة محددة بدّك إياها وما لقيتها هون؟",
+        "customGameSubtitle": "احكينا على واتساب وراح نأمنّها لك بأفضل سعر.",
+        "customGameCta": "اطلب لعبة مخصصة",
+    },
+    "reviews": {
+        "eyebrow": "آراء العملاء",
+        "title": "ثقة عملائنا أهم شي عنا.",
+        "description": "عملاء جربوا دُكانك. هاي شهاداتهم.",
+        "ratingOutOf5": "من 5 نجوم",
+        "basedOn": "مبني على",
+    },
+    "faq": {
+        "badge": "الأسئلة الشائعة",
+        "title": "أي استفسار عندك؟",
+        "description": "إذا لقيت إجابة هنا، رائع! وإذا لا، فريقنا متواجد ٢٤/٧ على واتساب لمساعدتك.",
+    },
+    "emailSignup": {
+        "eyebrow": "اشترك بنشرتنا",
+        "title": "احصل على خصم 10% فوراً 🎁",
+        "description": "سجّل إيميلك الآن واستلم كوبون خصم شخصي ينطبق على أول طلب لك.",
+        "placeholder": "your-email@example.com",
+        "cta": "احصل على الكوبون",
+        "success": "تم! نسخت الكوبون لك — استخدمه في الواتساب وقت الطلب.",
+    },
+    "footer": {
+        "tagline": "متجرك الموثوق للاشتراكات والألعاب الرقمية.",
+        "linksTitle": "روابط سريعة",
+        "contactTitle": "تواصل معنا",
+        "copyright": "© دُكانك — كل الحقوق محفوظة.",
+    },
+}
+
 INITIAL_SUBSCRIPTIONS = [
     {
         "id": "essential",

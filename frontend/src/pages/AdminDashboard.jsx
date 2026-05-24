@@ -18,9 +18,11 @@ import FaqTab from "../components/admin/FaqTab";
 import AccountTab from "../components/admin/AccountTab";
 import NotifyTab from "../components/admin/NotifyTab";
 import AnalyticsTab from "../components/admin/AnalyticsTab";
+import ContentTab from "../components/admin/ContentTab";
 
 const TABS = [
     { value: "analytics",     label: "الإحصائيات" },
+    { value: "content",       label: "محتوى الموقع" },
     { value: "store",         label: "إعدادات المتجر" },
     { value: "sections",      label: "ترتيب الأقسام" },
     { value: "subscriptions", label: "الاشتراكات" },
@@ -130,6 +132,9 @@ export default function AdminDashboard() {
                     </TabsContent>
                     <TabsContent value="analytics" className="mt-6">
                         <AnalyticsTab />
+                    </TabsContent>
+                    <TabsContent value="content" className="mt-6">
+                        <ContentTab onChanged={reload} />
                     </TabsContent>
                     <TabsContent value="notify" className="mt-6">
                         <NotifyTab />

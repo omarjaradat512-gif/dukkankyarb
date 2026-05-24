@@ -167,8 +167,8 @@ const BundleCard = ({ bundle, subscriptions, games }) => {
 };
 
 export const Bundles = () => {
-    const { bundles, subscriptions, games } = useStoreData();
-    const { t, lang } = useLang();
+    const { bundles, subscriptions, games, content } = useStoreData();
+    const c = content?.bundles || {};
     if (!bundles?.length) return null;
     return (
         <section
@@ -180,13 +180,13 @@ export const Bundles = () => {
                 <div className="mb-10 max-w-3xl">
                     <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] mb-3 text-[hsl(var(--brand-red))]">
                         <Package className="w-4 h-4" />
-                        {t("section.bundles")}
+                        {c.eyebrow}
                     </div>
                     <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[hsl(var(--brand-ink))] leading-tight">
-                        {lang === "ar" ? "خذ اشتراك + لعبة بسعر أقل" : "Get a subscription + game at a better price"}
+                        {c.title}
                     </h2>
                     <p className="mt-3 text-base sm:text-lg text-[hsl(var(--brand-ink))]/70 leading-relaxed">
-                        {t("section.bundlesDesc")}
+                        {c.description}
                     </p>
                 </div>
 

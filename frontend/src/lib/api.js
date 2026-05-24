@@ -66,6 +66,11 @@ export const apiRecordCartAdd = (data) =>
 export const apiGetAnalytics = (days = 30) =>
     client.get(`/admin/analytics?days=${days}`).then((r) => r.data);
 
+// Site content
+export const apiGetContent = () => client.get("/content").then((r) => r.data);
+export const apiUpdateContent = (payload) =>
+    client.put("/admin/content", payload).then((r) => r.data);
+
 // Auth
 export const apiLogin = (email, password) =>
     client.post("/auth/login", { email, password }).then((r) => r.data);

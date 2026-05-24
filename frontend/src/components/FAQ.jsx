@@ -35,7 +35,8 @@ const ICON_MAP = {
 export const FAQ_ICON_OPTIONS = Object.keys(ICON_MAP);
 
 export const FAQ = () => {
-    const { faqs } = useStoreData();
+    const { faqs, content } = useStoreData();
+    const c = content?.faq || {};
     const list = faqs || [];
     if (list.length === 0) return null;
     const defaultOpen = list[0]?.id;
@@ -50,14 +51,13 @@ export const FAQ = () => {
                 <div className="md:sticky md:top-28">
                     <div className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--brand-blue))]/15 border border-[hsl(var(--brand-blue))]/30 px-3 py-1.5 text-xs font-semibold text-[hsl(var(--brand-blue-deep))] dark:text-[hsl(var(--brand-blue))] mb-4">
                         <HelpCircle className="w-3.5 h-3.5" />
-                        الأسئلة الشائعة
+                        {c.badge}
                     </div>
                     <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[hsl(var(--brand-ink))] dark:text-[hsl(var(--brand-cream))] leading-tight">
-                        أي استفسار عندك؟
+                        {c.title}
                     </h2>
                     <p className="mt-3 text-base sm:text-lg text-[hsl(var(--brand-ink))]/70 dark:text-[hsl(var(--brand-cream))]/70 leading-relaxed">
-                        إذا لقيت إجابة هنا، رائع! وإذا لا، فريقنا متواجد ٢٤/٧
-                        على واتساب لمساعدتك.
+                        {c.description}
                     </p>
                 </div>
 

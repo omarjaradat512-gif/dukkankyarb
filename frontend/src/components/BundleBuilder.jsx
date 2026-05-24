@@ -58,7 +58,8 @@ const Chip = ({ selected, onClick, disabled, testId, children }) => (
 export const BundleBuilder = () => {
     const { add } = useCart();
     const { format } = useCurrency();
-    const { subscriptions: SUBSCRIPTIONS, games: GAMES } = useStoreData();
+    const { subscriptions: SUBSCRIPTIONS, games: GAMES, content } = useStoreData();
+    const c = content?.bundleBuilder || {};
     const [tier, setTier] = useState("five");
     const [subId, setSubId] = useState(null); // null = no subscription picked
     const [subDur, setSubDur] = useState("ext-3m"); // default duration
@@ -162,19 +163,19 @@ export const BundleBuilder = () => {
                 <div className="mb-8 max-w-3xl">
                     <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] mb-3 text-[hsl(var(--brand-red))]">
                         <Wand2 className="w-4 h-4" />
-                        ابني باقتك
+                        {c.eyebrow}
                     </div>
                     <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[hsl(var(--brand-ink))] leading-tight">
-                        اختار أنت، واحنا نخصملك
+                        {c.title}
                     </h2>
                     <p className="mt-3 text-base sm:text-lg text-[hsl(var(--brand-ink))]/70 leading-relaxed">
-                        ضمّ اشتراك + ألعاب، وكل ما زدت عنصر زاد الخصم تلقائياً.
+                        {c.description}
                     </p>
 
                     {/* Discount table — shows each duration's bundle discount */}
                     <div className="mt-5 max-w-md">
                         <div className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--brand-ink))]/55 mb-2">
-                            نسب الخصم حسب الاشتراك والمدة
+                            {c.discountsLabel}
                         </div>
                         <div className="grid gap-1.5">
                             {SUBSCRIPTIONS.flatMap((s) =>
@@ -193,7 +194,7 @@ export const BundleBuilder = () => {
                                             }`}
                                         >
                                             <span>{s.name} • {d.label}</span>
-                                            <span className="font-extrabold">خصم {pct}%</span>
+                                            <span className="font-extrabold">{`خصم ${pct}%`}</span>
                                         </div>
                                     );
                                 })
@@ -206,7 +207,7 @@ export const BundleBuilder = () => {
                     {/* Left: controls */}
                     <div className="space-y-7 sm:space-y-9">
                         {/* Step 1: tier */}
-                        <Section title="١) اختر جهازك" hint="السعر يتغير حسب الجهاز">
+                        <Section title={c.step1} hint={c.step1Hint}>
                             <div className="grid grid-cols-2 gap-2 max-w-xs">
                                 {["five", "four"].map((t) => (
                                     <Chip
@@ -222,7 +223,7 @@ export const BundleBuilder = () => {
                         </Section>
 
                         {/* Step 2: subscription */}
-                        <Section title="٢) أضف اشتراك (اختياري)">
+                        <Section title={c.step2}>
                             <div className="grid sm:grid-cols-2 gap-3">
                                 {SUBSCRIPTIONS.map((s) => {
                                     const active = subId === s.id;
@@ -282,7 +283,7 @@ export const BundleBuilder = () => {
 
                         {/* Step 3: games */}
                         <Section
-                            title="٣) أضف ألعاب"
+                            title={c.step3}
                             hint={`المحدد: ${gameIds.length}`}
                         >
                             <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto pr-1">
@@ -315,13 +316,13 @@ export const BundleBuilder = () => {
                         <div className="flex items-center gap-2 mb-4">
                             <ShoppingBag className="w-4 h-4" />
                             <span className="text-xs font-bold uppercase tracking-[0.15em] opacity-70">
-                                ملخص باقتك
+                                {c.summaryTitle}
                             </span>
                         </div>
 
                         {lineItems.length === 0 ? (
                             <p className="text-sm opacity-60 py-6">
-                                لسه ما اخترت شي. ابدأ بإضافة اشتراك أو لعبة.
+                                {c.summaryEmpty}
                             </p>
                         ) : (
                             <ul className="space-y-2.5 mb-4 max-h-64 overflow-y-auto">
@@ -345,20 +346,20 @@ export const BundleBuilder = () => {
                             <>
                                 <div className="space-y-1.5 text-sm mb-4 border-t border-[hsl(var(--brand-cream))]/15 pt-3">
                                     <div className="flex items-center justify-between opacity-70">
-                                        <span>المجموع الفرعي</span>
+                                        <span>{c.subtotal}</span>
                                         <span>{format(subtotal)}</span>
                                     </div>
                                     {discount > 0 && (
                                         <div className="flex items-center justify-between text-[#9affa6] font-semibold">
                                             <span className="inline-flex items-center gap-1.5">
                                                 <Sparkles className="w-3.5 h-3.5" />
-                                                خصم باقتك ({Math.round(discountPct * 100)}%)
+                                                {c.discountLabel} ({Math.round(discountPct * 100)}%)
                                             </span>
                                             <span>-{format(discount)}</span>
                                         </div>
                                     )}
                                     <div className="flex items-center justify-between pt-2 mt-2 border-t border-[hsl(var(--brand-cream))]/15">
-                                        <span className="font-bold">المجموع</span>
+                                        <span className="font-bold">{c.totalLabel}</span>
                                         <span
                                             className="text-2xl font-extrabold text-[#7CFF8A]"
                                             data-testid="builder-total"
@@ -370,7 +371,7 @@ export const BundleBuilder = () => {
 
                                 {hintNoSub && (
                                     <div className="text-[11px] mb-4 rounded-xl bg-[hsl(var(--brand-cream))]/8 px-3 py-2 opacity-90">
-                                        💡 أضف اشتراك للحصول على خصم على كامل الباقة!
+                                        {c.hintNoSub}
                                     </div>
                                 )}
                                 {sub && dur && lineItems.length === 1 && discountPct === 0 && (
@@ -389,11 +390,11 @@ export const BundleBuilder = () => {
                         >
                             {adding ? (
                                 <>
-                                    <Check className="w-4 h-4" /> أُضيفت!
+                                    <Check className="w-4 h-4" /> {c.addedAll}
                                 </>
                             ) : (
                                 <>
-                                    <Plus className="w-4 h-4" /> أضف باقتك للسلة
+                                    <Plus className="w-4 h-4" /> {c.addAll}
                                 </>
                             )}
                         </button>
@@ -407,7 +408,7 @@ export const BundleBuilder = () => {
                                 data-testid="builder-reset"
                                 className="w-full mt-2 inline-flex items-center justify-center gap-1.5 text-xs opacity-70 hover:opacity-100"
                             >
-                                <X className="w-3 h-3" /> ابدأ من جديد
+                                <X className="w-3 h-3" /> {c.reset}
                             </button>
                         )}
                     </aside>

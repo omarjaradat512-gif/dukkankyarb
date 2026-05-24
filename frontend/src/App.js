@@ -36,9 +36,10 @@ import { quickInquiry } from "./lib/whatsapp";
 
 const SECTION_RENDERERS = {
     recommender: () => <Recommender />,
-    essential: ({ subscriptions }) => {
+    essential: ({ subscriptions, content }) => {
         const essential = subscriptions.find((s) => s.id === "essential");
         if (!essential) return null;
+        const c = content.essential || {};
         return (
             <section
                 id="essential"
@@ -46,23 +47,24 @@ const SECTION_RENDERERS = {
                 className="max-w-7xl mx-auto px-5 sm:px-8 py-14 sm:py-20"
             >
                 <SectionHeader
-                    eyebrow="الاشتراكات"
-                    title="بلايستيشن بلس أساسي"
-                    description="للاعب اللي بدو الأساسيات: ألعاب شهرية، أونلاين متعدد اللاعبين."
+                    eyebrow={c.eyebrow}
+                    title={c.title}
+                    description={c.description}
                 />
                 <div className="grid md:grid-cols-2 gap-6 sm:gap-8 stagger">
                     <SubscriptionCard sub={essential} />
                     <FeatureHighlight
-                        title="ليش الاشتراك الأساسي؟"
-                        bullets={["اللعب أونلاين مع أصدقائك", "ألعاب شهرية مجانية"]}
+                        title={c.featureTitle}
+                        bullets={c.featureBullets || []}
                     />
                 </div>
             </section>
         );
     },
-    extra: ({ subscriptions }) => {
+    extra: ({ subscriptions, content }) => {
         const extra = subscriptions.find((s) => s.id === "extra");
         if (!extra) return null;
+        const c = content.extra || {};
         return (
             <section
                 id="extra"
@@ -71,20 +73,15 @@ const SECTION_RENDERERS = {
             >
                 <div className="max-w-7xl mx-auto px-5 sm:px-8 py-14 sm:py-20">
                     <SectionHeader
-                        eyebrow="الاشتراكات"
-                        title="بلايستيشن بلس إضافي"
-                        description="مكتبة أوسع تتجاوز ٤٠٠ لعبة من Sony وشركاء آخرين، بسعر يستاهل."
+                        eyebrow={c.eyebrow}
+                        title={c.title}
+                        description={c.description}
                         accent="red"
                     />
                     <div className="grid md:grid-cols-2 gap-6 sm:gap-8 stagger">
                         <FeatureHighlight
-                            title="ليش الاشتراك الإضافي؟"
-                            bullets={[
-                                "مكتبة ضخمة من الألعاب الكبرى",
-                                "ألعاب PS4 و PS5 ضمن المكتبة",
-                                "تجارب لعب لاستخدام محدود",
-                                "كل مزايا الاشتراك الأساسي",
-                            ]}
+                            title={c.featureTitle}
+                            bullets={c.featureBullets || []}
                             accent="red"
                         />
                         <SubscriptionCard sub={extra} />
@@ -96,56 +93,59 @@ const SECTION_RENDERERS = {
     comparison: () => <ComparisonTable />,
     bundles: () => <Bundles />,
     bundleBuilder: () => <BundleBuilder />,
-    games: ({ games, store, waTemplates }) => (
-        <section
-            id="games"
-            data-testid="games-section"
-            className="bg-white/60 border-y border-[hsl(var(--brand-ink))]/10"
-        >
-            <div className="max-w-7xl mx-auto px-5 sm:px-8 py-14 sm:py-20">
-                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 sm:mb-12">
-                    <SectionHeader
-                        eyebrow="ألعاب رقمية"
-                        title="أبرز الألعاب المتاحة"
-                        description="اضغط على أي لعبة لرؤية تفاصيلها الكاملة — تريلر، مواصفات، وألعاب مشابهة."
-                    />
-                    <div className="shrink-0">
-                        <CompareButton />
-                    </div>
-                </div>
-                <div
-                    data-testid="games-grid"
-                    className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 stagger"
-                >
-                    {games.map((g) => (
-                        <GameCard key={g.id} game={g} />
-                    ))}
-                </div>
-
-                <div className="mt-12 rounded-3xl bg-[hsl(var(--brand-blue-deep))] text-[hsl(var(--brand-cream))] p-8 sm:p-12 relative overflow-hidden">
-                    <div className="absolute -top-8 -right-8 w-44 h-44 keffiyeh-pattern opacity-30 rotate-12" />
-                    <div className="relative grid md:grid-cols-[1fr_auto] items-center gap-6">
-                        <div>
-                            <h3 className="text-2xl sm:text-3xl font-bold leading-tight">
-                                لعبة محددة بدّك إياها وما لقيتها هون؟
-                            </h3>
-                            <p className="opacity-85 mt-2 text-sm sm:text-base">
-                                احكينا على واتساب وراح نأمنّها لك بأفضل سعر.
-                            </p>
+    games: ({ games, store, waTemplates, content }) => {
+        const c = content.games || {};
+        return (
+            <section
+                id="games"
+                data-testid="games-section"
+                className="bg-white/60 border-y border-[hsl(var(--brand-ink))]/10"
+            >
+                <div className="max-w-7xl mx-auto px-5 sm:px-8 py-14 sm:py-20">
+                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 sm:mb-12">
+                        <SectionHeader
+                            eyebrow={c.eyebrow}
+                            title={c.title}
+                            description={c.description}
+                        />
+                        <div className="shrink-0">
+                            <CompareButton />
                         </div>
-                        <button
-                            onClick={() => quickInquiry("لعبة مخصصة بطلب عميل", store, waTemplates)}
-                            data-testid="cta-custom-game"
-                            className="inline-flex items-center justify-center gap-2 rounded-full px-6 h-12 bg-[#25D366] text-white font-semibold hover:bg-[#1DA851] transition-colors w-fit"
-                        >
-                            <MessageCircle className="w-4 h-4 wa-pulse" />
-                            اطلب لعبة مخصصة
-                        </button>
+                    </div>
+                    <div
+                        data-testid="games-grid"
+                        className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 stagger"
+                    >
+                        {games.map((g) => (
+                            <GameCard key={g.id} game={g} />
+                        ))}
+                    </div>
+
+                    <div className="mt-12 rounded-3xl bg-[hsl(var(--brand-blue-deep))] text-[hsl(var(--brand-cream))] p-8 sm:p-12 relative overflow-hidden">
+                        <div className="absolute -top-8 -right-8 w-44 h-44 keffiyeh-pattern opacity-30 rotate-12" />
+                        <div className="relative grid md:grid-cols-[1fr_auto] items-center gap-6">
+                            <div>
+                                <h3 className="text-2xl sm:text-3xl font-bold leading-tight">
+                                    {c.customGameTitle}
+                                </h3>
+                                <p className="opacity-85 mt-2 text-sm sm:text-base">
+                                    {c.customGameSubtitle}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => quickInquiry("لعبة مخصصة بطلب عميل", store, waTemplates)}
+                                data-testid="cta-custom-game"
+                                className="inline-flex items-center justify-center gap-2 rounded-full px-6 h-12 bg-[#25D366] text-white font-semibold hover:bg-[#1DA851] transition-colors w-fit"
+                            >
+                                <MessageCircle className="w-4 h-4 wa-pulse" />
+                                {c.customGameCta}
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </section>
-    ),
+            </section>
+        );
+    },
     reviews: () => <Reviews />,
     emailSignup: () => <EmailSignup />,
     faq: () => <FAQ />,
@@ -154,7 +154,7 @@ const SECTION_RENDERERS = {
 function HomePage() {
     const [cartOpen, setCartOpen] = useState(false);
     const [wishOpen, setWishOpen] = useState(false);
-    const { subscriptions, games, store, sections, waTemplates, loading } = useStoreData();
+    const { subscriptions, games, store, sections, waTemplates, content, loading } = useStoreData();
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -207,6 +207,7 @@ function HomePage() {
                         games={games}
                         store={store}
                         waTemplates={waTemplates}
+                        content={content}
                     />
                 );
             })}

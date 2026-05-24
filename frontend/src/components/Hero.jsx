@@ -4,8 +4,9 @@ import { useLang, pickLocalized } from "../contexts/LanguageContext";
 import { useStoreData } from "../contexts/DataContext";
 
 export const Hero = () => {
-    const { t, isRTL, lang } = useLang();
-    const { store, waTemplates } = useStoreData();
+    const { isRTL, lang } = useLang();
+    const { store, waTemplates, content } = useStoreData();
+    const c = content?.hero || {};
     const storeName = pickLocalized(store, "name", lang);
     const Arrow = isRTL ? ArrowLeft : ArrowRight;
     return (
@@ -21,21 +22,21 @@ export const Hero = () => {
                 <div className="rise">
                     <div className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--brand-blue))]/15 border border-[hsl(var(--brand-blue))]/30 px-3 py-1.5 text-xs sm:text-sm font-semibold text-[hsl(var(--brand-blue-deep))] mb-6">
                         <BadgeCheck className="w-4 h-4" />
-                        {t("hero.badge")}
+                        {c.badge}
                     </div>
 
                     <h1
                         className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] text-[hsl(var(--brand-ink))]"
                         data-testid="hero-title"
                     >
-                        <span className="block">{t("hero.title.line1")}</span>
+                        <span className="block">{c.titleLine1}</span>
                         <span className="block text-[hsl(var(--brand-red))]">
-                            {t("hero.title.line2")}
+                            {c.titleLine2}
                         </span>
                     </h1>
 
                     <p className="mt-6 text-base sm:text-lg text-[hsl(var(--brand-ink))]/70 max-w-xl leading-relaxed">
-                        {t("hero.subtitle")}
+                        {c.subtitle}
                     </p>
 
                     <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -44,7 +45,7 @@ export const Hero = () => {
                             data-testid="hero-cta-browse"
                             className="inline-flex items-center gap-2 rounded-full px-6 h-12 bg-[hsl(var(--brand-ink))] text-[hsl(var(--brand-cream))] text-sm font-semibold hover:bg-[hsl(var(--brand-blue-deep))] transition-colors"
                         >
-                            {t("hero.cta.browse")}
+                            {c.ctaBrowse}
                             <Arrow className="w-4 h-4" />
                         </a>
                         <button
@@ -53,15 +54,15 @@ export const Hero = () => {
                             className="inline-flex items-center gap-2 rounded-full px-6 h-12 bg-[#25D366] text-white text-sm font-semibold hover:bg-[#1DA851] transition-colors"
                         >
                             <MessageCircle className="w-4 h-4 wa-pulse" />
-                            {t("hero.cta.whatsapp")}
+                            {c.ctaWhatsApp}
                         </button>
                     </div>
 
                     <div className="mt-10 grid grid-cols-3 gap-3 max-w-lg">
                         {[
-                            { icon: Zap, label: t("hero.benefit.instant") },
-                            { icon: BadgeCheck, label: t("hero.benefit.original") },
-                            { icon: MessageCircle, label: t("hero.benefit.support") },
+                            { icon: Zap, label: c.benefitInstant },
+                            { icon: BadgeCheck, label: c.benefitOriginal },
+                            { icon: MessageCircle, label: c.benefitSupport },
                         ].map((b, i) => (
                             <div
                                 key={i}

@@ -1,15 +1,11 @@
 import { Check, X } from "lucide-react";
-
-const ROWS = [
-    { feature: "اللعب أونلاين متعدد اللاعبين", essential: true, extra: true },
-    { feature: "ألعاب شهرية مجانية", essential: true, extra: true },
-    { feature: "مكتبة بأكثر من 400 لعبة", essential: false, extra: true },
-    { feature: "ألعاب PS4 و PS5 ضمن المكتبة", essential: false, extra: true },
-    { feature: "تجارب لعب محدودة المدة", essential: false, extra: true },
-    { feature: "دعم على واتساب من المتجر", essential: true, extra: true },
-];
+import { useStoreData } from "../contexts/DataContext";
 
 export const ComparisonTable = () => {
+    const { content } = useStoreData();
+    const c = content?.comparison || {};
+    const ROWS = c.rows || [];
+
     return (
         <section
             id="comparison"
@@ -19,14 +15,13 @@ export const ComparisonTable = () => {
             <div className="max-w-7xl mx-auto px-5 sm:px-8 py-14 sm:py-20">
                 <div className="mb-10 max-w-3xl">
                     <div className="inline-block text-xs font-bold uppercase tracking-[0.18em] mb-3 text-[hsl(var(--brand-blue-deep))]">
-                        مقارنة الباقات
+                        {c.eyebrow}
                     </div>
                     <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[hsl(var(--brand-ink))] leading-tight">
-                        أساسي ولا إضافي؟ شو الفرق؟
+                        {c.title}
                     </h2>
                     <p className="mt-3 text-base sm:text-lg text-[hsl(var(--brand-ink))]/70 leading-relaxed">
-                        جدول واضح بيوضحلك كل شي بتحصل عليه مع كل باقة عشان
-                        تختار اللي يناسبك.
+                        {c.description}
                     </p>
                 </div>
 
@@ -43,16 +38,16 @@ export const ComparisonTable = () => {
                         </div>
                         <div className="bg-[hsl(var(--brand-blue))]/15 px-4 sm:px-6 py-5 border-b border-[hsl(var(--brand-ink))]/10 text-center">
                             <div className="text-base sm:text-lg font-bold text-[hsl(var(--brand-blue-deep))]">
-                                أساسي
+                                {c.essentialColLabel}
                             </div>
                         </div>
                         <div className="bg-[hsl(var(--brand-red))]/10 px-4 sm:px-6 py-5 border-b border-[hsl(var(--brand-ink))]/10 text-center relative">
                             <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold rounded-full bg-[hsl(var(--brand-red))] text-[hsl(var(--brand-cream))] px-3 py-1 shadow-md whitespace-nowrap z-10">
                                 <i className="fa-solid fa-fire text-[9px]" />
-                                الأكثر طلباً
+                                {c.popularBadge}
                             </span>
                             <div className="text-base sm:text-lg font-bold text-[hsl(var(--brand-red))]">
-                                إضافي
+                                {c.extraColLabel}
                             </div>
                         </div>
                     </div>
@@ -99,7 +94,7 @@ export const ComparisonTable = () => {
                     {/* CTA row */}
                     <div className="grid grid-cols-[1.4fr_1fr_1fr] sm:grid-cols-[1.6fr_1fr_1fr] bg-[hsl(var(--brand-cream))]/70">
                         <div className="px-4 sm:px-6 py-5 text-xs sm:text-sm text-[hsl(var(--brand-ink))]/60">
-                            ابدأ رحلتك:
+                            {c.ctaStart}
                         </div>
                         <div className="px-3 sm:px-6 py-5 flex items-center justify-center">
                             <a
@@ -107,7 +102,7 @@ export const ComparisonTable = () => {
                                 data-testid="comparison-cta-essential"
                                 className="inline-flex items-center justify-center rounded-full px-4 sm:px-5 h-10 bg-[hsl(var(--brand-blue-deep))] text-[hsl(var(--brand-cream))] text-xs sm:text-sm font-semibold hover:bg-[hsl(var(--brand-ink))] transition-colors"
                             >
-                                اختر الأساسي
+                                {c.ctaEssential}
                             </a>
                         </div>
                         <div className="px-3 sm:px-6 py-5 flex items-center justify-center">
@@ -116,7 +111,7 @@ export const ComparisonTable = () => {
                                 data-testid="comparison-cta-extra"
                                 className="inline-flex items-center justify-center rounded-full px-4 sm:px-5 h-10 bg-[hsl(var(--brand-red))] text-[hsl(var(--brand-cream))] text-xs sm:text-sm font-semibold hover:bg-[hsl(var(--brand-red-soft))] transition-colors"
                             >
-                                اختر الإضافي
+                                {c.ctaExtra}
                             </a>
                         </div>
                     </div>

@@ -14,14 +14,14 @@ import shutil
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Any, Dict
 
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, status, UploadFile, File
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, status, UploadFile, File, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
-from initial_data import INITIAL_STORE, INITIAL_SUBSCRIPTIONS, INITIAL_GAMES, INITIAL_BUNDLES, INITIAL_REVIEWS, INITIAL_FAQS
+from initial_data import INITIAL_STORE, INITIAL_SUBSCRIPTIONS, INITIAL_GAMES, INITIAL_BUNDLES, INITIAL_REVIEWS, INITIAL_FAQS, INITIAL_CONTENT
 
 # ---------------------------------------------------------------------------
 # Setup
@@ -280,6 +280,32 @@ async def list_reviews():
 async def list_faqs():
     items = await db.faqs.find({}, {"_id": 0}).sort("order", 1).to_list(200)
     return items
+
+
+# ---------------------------------------------------------------------------
+# Site content (page copy) — single document. Public read, admin write.
+# ---------------------------------------------------------------------------
+@api.get("/content")
+async def get_content():
+    doc = await db.settings.find_one({"id": "content"}, {"_id": 0, "id": 0}) or {}
+    return doc
+
+
+@api.put("/admin/content")
+async def update_content(payload: Dict[str, Any] = Body(...), current=Depends(get_current_admin)):
+    # Whitelist: only allow keys that exist in INITIAL_CONTENT (top-level)
+    allowed = set(INITIAL_CONTENT.keys())
+    sanitized = {k: v for k, v in payload.items() if k in allowed}
+    if not sanitized:
+        raise HTTPException(400, "لا يوجد محتوى صالح للحفظ")
+    await db.settings.update_one(
+        {"id": "content"},
+        {"$set": sanitized},
+        upsert=True,
+    )
+    await log_audit(current, "update", "content", "content", f"تحديث {len(sanitized)} قسم")
+    doc = await db.settings.find_one({"id": "content"}, {"_id": 0, "id": 0}) or {}
+    return doc
 
 
 # ---------------------------------------------------------------------------
@@ -979,6 +1005,26 @@ async def seed_initial_data():
     if await db.faqs.count_documents({}) == 0:
         await db.faqs.insert_many(list(INITIAL_FAQS))
         logger.info(f"Seeded {len(INITIAL_FAQS)} faqs")
+
+    # Site content (single doc by id="content")
+    existing_content = await db.settings.find_one({"id": "content"})
+    if not existing_content:
+        await db.settings.insert_one({"id": "content", **INITIAL_CONTENT})
+        logger.info("Seeded site content")
+    else:
+        # Backfill missing top-level keys (e.g. when new sections are added later)
+        patch = {}
+        for k, v in INITIAL_CONTENT.items():
+            if k not in existing_content:
+                patch[k] = v
+            elif isinstance(v, dict) and isinstance(existing_content.get(k), dict):
+                # Add missing sub-keys (preserving any admin edits)
+                for sk, sv in v.items():
+                    if sk not in existing_content[k]:
+                        patch[f"{k}.{sk}"] = sv
+        if patch:
+            await db.settings.update_one({"id": "content"}, {"$set": patch})
+            logger.info(f"Backfilled {len(patch)} content keys")
 
     # Sections: migrate to include any new default sections that aren't already present.
     sec_doc = await db.settings.find_one({"key": "sections"})

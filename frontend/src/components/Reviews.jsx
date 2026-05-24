@@ -17,7 +17,8 @@ const StarRow = ({ count }) => (
 );
 
 export const Reviews = () => {
-    const { reviews } = useStoreData();
+    const { reviews, content } = useStoreData();
+    const c = content?.reviews || {};
     const list = reviews || [];
     if (list.length === 0) return null;
     const avg =
@@ -33,13 +34,13 @@ export const Reviews = () => {
                 <div className="mb-10 sm:mb-14 grid md:grid-cols-[1fr_auto] items-end gap-6">
                     <div className="max-w-3xl">
                         <div className="inline-block text-xs font-bold uppercase tracking-[0.18em] mb-3 text-[hsl(var(--brand-red))]">
-                            آراء العملاء
+                            {c.eyebrow}
                         </div>
                         <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[hsl(var(--brand-ink))] dark:text-[hsl(var(--brand-cream))] leading-tight">
-                            ثقة عملائنا أهم شي عنا.
+                            {c.title}
                         </h2>
                         <p className="mt-3 text-base sm:text-lg text-[hsl(var(--brand-ink))]/70 dark:text-[hsl(var(--brand-cream))]/70 leading-relaxed">
-                            عملاء جربوا دُكانك. هاي شهاداتهم.
+                            {c.description}
                         </p>
                     </div>
                     <div
@@ -51,14 +52,14 @@ export const Reviews = () => {
                                 {avg.toFixed(1)}
                             </div>
                             <div className="text-xs opacity-75 mt-1">
-                                من 5 نجوم
+                                {c.ratingOutOf5}
                             </div>
                         </div>
                         <div className="h-10 w-px bg-[hsl(var(--brand-cream))]/20" />
                         <div>
                             <StarRow count={5} />
                             <div className="text-xs opacity-75 mt-1">
-                                مبني على {list.length}+ تقييم
+                                {`${c.basedOn} ${list.length}+`}
                             </div>
                         </div>
                     </div>
