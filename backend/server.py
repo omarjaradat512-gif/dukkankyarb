@@ -7,21 +7,51 @@ load_dotenv(ROOT_DIR / ".env")
 import os
 import logging
 import uuid
-import bcrypt
-import jwt
 import secrets
 import shutil
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Any, Dict
 
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, status, UploadFile, File, Body
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, Field, EmailStr
 
 from initial_data import INITIAL_STORE, INITIAL_SUBSCRIPTIONS, INITIAL_GAMES, INITIAL_BUNDLES, INITIAL_REVIEWS, INITIAL_FAQS, INITIAL_CONTENT
+
+# Shared infrastructure (DB, JWT, rate limiter, audit log, hashing)
+from core import (
+    db,
+    JWT_SECRET,
+    JWT_ALG,
+    JWT_EXPIRY_HOURS,
+    security,
+    hash_password,
+    verify_password,
+    create_access_token,
+    get_current_admin,
+    login_rate_limit_check,
+    record_failed_login,
+    reset_failed_logins,
+    strip_id,
+    log_audit,
+)
+
+# Pydantic request/response models
+from models import (
+    LoginRequest,
+    LoginResponse,
+    ChangePasswordRequest,
+    StoreSettings,
+    Duration,
+    Subscription,
+    Game,
+    Bundle,
+    Review,
+    FAQItem,
+    NotifyRequestPayload,
+    CartEventPayload,
+)
 
 # ---------------------------------------------------------------------------
 # Setup
@@ -32,254 +62,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger("dukkank")
 
-mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ["DB_NAME"]]
-
-JWT_SECRET = os.environ["JWT_SECRET"]
-JWT_ALG = "HS256"
-JWT_EXPIRY_HOURS = 24
-
 app = FastAPI(title="Dukkank API")
 api = APIRouter(prefix="/api")
-security = HTTPBearer(auto_error=False)
 
 # Uploads dir (served as /api/uploads/<file>)
 UPLOAD_DIR = ROOT_DIR / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
-
-
-# ---------------------------------------------------------------------------
-# Auth helpers
-# ---------------------------------------------------------------------------
-def hash_password(pw: str) -> str:
-    return bcrypt.hashpw(pw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-
-def verify_password(pw: str, hashed: str) -> bool:
-    try:
-        return bcrypt.checkpw(pw.encode("utf-8"), hashed.encode("utf-8"))
-    except Exception:
-        return False
-
-
-def create_access_token(user_id: str, email: str) -> str:
-    now = datetime.now(timezone.utc)
-    payload = {
-        "sub": user_id,
-        "email": email,
-        # `iat` is used to invalidate tokens after a password change:
-        # any token whose `iat` is older than `user.password_changed_at`
-        # is rejected by get_current_admin().
-        "iat": int(now.timestamp()),
-        "exp": now + timedelta(hours=JWT_EXPIRY_HOURS),
-        "type": "access",
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
-
-
-async def get_current_admin(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-) -> dict:
-    if credentials is None or not credentials.credentials:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    token = credentials.credentials
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
-        if payload.get("type") != "access":
-            raise HTTPException(status_code=401, detail="Invalid token type")
-        user = await db.users.find_one({"id": payload["sub"]})
-        if not user or user.get("role") != "admin":
-            raise HTTPException(status_code=401, detail="Admin only")
-        # Reject tokens issued before the most recent password change.
-        pwd_changed = user.get("password_changed_at")
-        token_iat = payload.get("iat")
-        if pwd_changed and token_iat is not None and int(token_iat) < int(pwd_changed):
-            raise HTTPException(status_code=401, detail="Token invalidated (password changed)")
-        user.pop("password_hash", None)
-        user.pop("_id", None)
-        return user
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-
-# ---------------------------------------------------------------------------
-# Rate limiting (in-memory, per-IP). Used on /auth/login.
-# Note: for multi-process deployments, swap this for Redis-backed limiter.
-# ---------------------------------------------------------------------------
-_login_attempts: Dict[str, list] = {}
-LOGIN_WINDOW_SECONDS = 15 * 60       # 15 min sliding window
-LOGIN_MAX_ATTEMPTS = 8                # max failed attempts per IP per window
-
-
-def _client_ip(request: Request) -> str:
-    fwd = request.headers.get("x-forwarded-for")
-    if fwd:
-        return fwd.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
-
-
-def login_rate_limit_check(request: Request):
-    """Raise 429 if too many recent FAILED login attempts from this IP."""
-    ip = _client_ip(request)
-    now = datetime.now(timezone.utc).timestamp()
-    cutoff = now - LOGIN_WINDOW_SECONDS
-    history = [t for t in _login_attempts.get(ip, []) if t > cutoff]
-    _login_attempts[ip] = history
-    if len(history) >= LOGIN_MAX_ATTEMPTS:
-        retry_after = int(history[0] + LOGIN_WINDOW_SECONDS - now)
-        raise HTTPException(
-            status_code=429,
-            detail=f"محاولات كثيرة متتالية، حاول مرة أخرى بعد {max(60, retry_after)} ثانية.",
-            headers={"Retry-After": str(max(60, retry_after))},
-        )
-
-
-def record_failed_login(request: Request):
-    ip = _client_ip(request)
-    now = datetime.now(timezone.utc).timestamp()
-    _login_attempts.setdefault(ip, []).append(now)
-
-
-def reset_failed_logins(request: Request):
-    ip = _client_ip(request)
-    _login_attempts.pop(ip, None)
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-def strip_id(doc: Optional[dict]) -> Optional[dict]:
-    if doc is None:
-        return None
-    doc.pop("_id", None)
-    return doc
-
-
-async def log_audit(actor: dict, action: str, target_type: str, target_id: str = "",
-                    target_label: str = "", details: Optional[dict] = None):
-    """Insert an audit-log entry. Fire-and-forget; failures must not break the request."""
-    try:
-        entry = {
-            "id": str(uuid.uuid4()),
-            "actor_email": actor.get("email", "system") if actor else "system",
-            "action": action,                  # create | update | delete | other
-            "target_type": target_type,        # store | subscription | game | bundle | sections | promo | social_proof | wa_templates | subscriber | upload
-            "target_id": target_id or "",
-            "target_label": target_label or "",
-            "details": details or {},
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-        await db.audit_log.insert_one(entry)
-    except Exception as e:
-        logger.warning(f"audit log failed: {e}")
-
-
-# ---------------------------------------------------------------------------
-# Models
-# ---------------------------------------------------------------------------
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class LoginResponse(BaseModel):
-    token: str
-    user: Dict[str, Any]
-
-
-class StoreSettings(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    name: str
-    name_en: Optional[str] = ""
-    tagline: str
-    tagline_en: Optional[str] = ""
-    whatsapp: str
-    whatsappDisplay: str
-    instagram: Optional[str] = ""
-
-
-class Duration(BaseModel):
-    id: str
-    label: str
-    label_en: Optional[str] = ""
-    four: Optional[float] = None
-    five: Optional[float] = None
-    bundleDiscountPct: float = 0.0   # percent (e.g. 10 = 10% off) applied in BundleBuilder when this duration is selected
-
-
-class Subscription(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str
-    name: str
-    name_en: Optional[str] = ""
-    tagline: str
-    tagline_en: Optional[str] = ""
-    accent: str = "blue"
-    durations: List[Duration] = []
-
-
-class Game(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str
-    name: str
-    sub: str = ""
-    image: str = ""
-    gradientFrom: str = "#222"
-    gradientTo: str = "#000"
-    four: Optional[float] = None
-    five: Optional[float] = None
-    available: bool = True
-    bestSeller: bool = False
-
-
-class Bundle(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str
-    subId: str
-    durationId: str
-    gameId: str
-    tier: str  # "four" or "five"
-    bundlePrice: float
-    available: bool = True
-
-
-class Review(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str
-    name: str
-    rating: int = 5
-    text: str
-    order: int = 0
-
-
-class FAQItem(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str
-    icon: str = "help-circle"   # lucide icon key (e.g. "truck", "credit-card", "shield-check", "help-circle")
-    q: str
-    a: str
-    order: int = 0
-
-
-class ChangePasswordRequest(BaseModel):
-    current_password: str
-    new_password: str
-
-
-class NotifyRequestPayload(BaseModel):
-    gameId: str
-    contact: str   # phone or email
-    name: Optional[str] = ""
-
-
-class CartEventPayload(BaseModel):
-    itemType: str   # "subscription" | "game" | "bundle"
-    itemId: str
-    itemName: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -1130,7 +919,8 @@ async def on_startup():
 
 @app.on_event("shutdown")
 async def on_shutdown():
-    client.close()
+    # Mongo client is owned by core.py; no explicit close needed (process exit handles it).
+    pass
 
 
 # ---------------------------------------------------------------------------
