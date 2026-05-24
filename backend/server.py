@@ -65,10 +65,15 @@ def verify_password(pw: str, hashed: str) -> bool:
 
 
 def create_access_token(user_id: str, email: str) -> str:
+    now = datetime.now(timezone.utc)
     payload = {
         "sub": user_id,
         "email": email,
-        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS),
+        # `iat` is used to invalidate tokens after a password change:
+        # any token whose `iat` is older than `user.password_changed_at`
+        # is rejected by get_current_admin().
+        "iat": int(now.timestamp()),
+        "exp": now + timedelta(hours=JWT_EXPIRY_HOURS),
         "type": "access",
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
@@ -87,6 +92,11 @@ async def get_current_admin(
         user = await db.users.find_one({"id": payload["sub"]})
         if not user or user.get("role") != "admin":
             raise HTTPException(status_code=401, detail="Admin only")
+        # Reject tokens issued before the most recent password change.
+        pwd_changed = user.get("password_changed_at")
+        token_iat = payload.get("iat")
+        if pwd_changed and token_iat is not None and int(token_iat) < int(pwd_changed):
+            raise HTTPException(status_code=401, detail="Token invalidated (password changed)")
         user.pop("password_hash", None)
         user.pop("_id", None)
         return user
@@ -94,6 +104,49 @@ async def get_current_admin(
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting (in-memory, per-IP). Used on /auth/login.
+# Note: for multi-process deployments, swap this for Redis-backed limiter.
+# ---------------------------------------------------------------------------
+_login_attempts: Dict[str, list] = {}
+LOGIN_WINDOW_SECONDS = 15 * 60       # 15 min sliding window
+LOGIN_MAX_ATTEMPTS = 8                # max failed attempts per IP per window
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def login_rate_limit_check(request: Request):
+    """Raise 429 if too many recent FAILED login attempts from this IP."""
+    ip = _client_ip(request)
+    now = datetime.now(timezone.utc).timestamp()
+    cutoff = now - LOGIN_WINDOW_SECONDS
+    history = [t for t in _login_attempts.get(ip, []) if t > cutoff]
+    _login_attempts[ip] = history
+    if len(history) >= LOGIN_MAX_ATTEMPTS:
+        retry_after = int(history[0] + LOGIN_WINDOW_SECONDS - now)
+        raise HTTPException(
+            status_code=429,
+            detail=f"محاولات كثيرة متتالية، حاول مرة أخرى بعد {max(60, retry_after)} ثانية.",
+            headers={"Retry-After": str(max(60, retry_after))},
+        )
+
+
+def record_failed_login(request: Request):
+    ip = _client_ip(request)
+    now = datetime.now(timezone.utc).timestamp()
+    _login_attempts.setdefault(ip, []).append(now)
+
+
+def reset_failed_logins(request: Request):
+    ip = _client_ip(request)
+    _login_attempts.pop(ip, None)
 
 
 # ---------------------------------------------------------------------------
@@ -312,11 +365,14 @@ async def update_content(payload: Dict[str, Any] = Body(...), current=Depends(ge
 # Auth endpoints
 # ---------------------------------------------------------------------------
 @api.post("/auth/login", response_model=LoginResponse)
-async def login(body: LoginRequest):
+async def login(body: LoginRequest, request: Request):
+    login_rate_limit_check(request)
     email = body.email.lower().strip()
     user = await db.users.find_one({"email": email})
     if not user or not verify_password(body.password, user.get("password_hash", "")):
+        record_failed_login(request)
         raise HTTPException(status_code=401, detail="Email or password is incorrect")
+    reset_failed_logins(request)
     token = create_access_token(user["id"], user["email"])
     user.pop("password_hash", None)
     user.pop("_id", None)
@@ -532,9 +588,21 @@ async def change_password(payload: ChangePasswordRequest, current=Depends(get_cu
     if not verify_password(payload.current_password, user.get("password_hash", "")):
         raise HTTPException(400, "كلمة المرور الحالية غير صحيحة")
     new_hash = hash_password(payload.new_password)
-    await db.users.update_one({"id": current["id"]}, {"$set": {"password_hash": new_hash}})
+    # Stamp the change time so all PREVIOUSLY issued tokens become invalid.
+    # We add a small skew (+1s) so the just-issued new token is definitely valid.
+    now_ts = int(datetime.now(timezone.utc).timestamp())
+    await db.users.update_one(
+        {"id": current["id"]},
+        {"$set": {"password_hash": new_hash, "password_changed_at": now_ts}},
+    )
     await log_audit(current, "update", "account", current["id"], "تغيير كلمة المرور")
-    return {"ok": True, "message": "تم تغيير كلمة المرور بنجاح"}
+    # Issue a fresh token for the user so their current session stays alive.
+    new_token = create_access_token(current["id"], current["email"])
+    return {
+        "ok": True,
+        "message": "تم تغيير كلمة المرور بنجاح. كل الجلسات القديمة الأخرى تم تسجيل خروجها.",
+        "token": new_token,
+    }
 
 
 # ---------------------------------------------------------------------------

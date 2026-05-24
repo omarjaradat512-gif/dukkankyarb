@@ -28,6 +28,7 @@ import { SocialProofToast } from "./components/SocialProofToast";
 import { EmailSignup } from "./components/EmailSignup";
 import { HomeSkeleton } from "./components/Skeletons";
 import { WishlistDrawer } from "./components/WishlistDrawer";
+import { GamesGrid } from "./components/GamesGrid";
 import GameDetail from "./pages/GameDetail";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -112,14 +113,7 @@ const SECTION_RENDERERS = {
                             <CompareButton />
                         </div>
                     </div>
-                    <div
-                        data-testid="games-grid"
-                        className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 stagger"
-                    >
-                        {games.map((g) => (
-                            <GameCard key={g.id} game={g} />
-                        ))}
-                    </div>
+                    <GamesGrid games={games} />
 
                     <div className="mt-12 rounded-3xl bg-[hsl(var(--brand-blue-deep))] text-[hsl(var(--brand-cream))] p-8 sm:p-12 relative overflow-hidden">
                         <div className="absolute -top-8 -right-8 w-44 h-44 keffiyeh-pattern opacity-30 rotate-12" />

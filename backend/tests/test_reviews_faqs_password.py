@@ -21,7 +21,7 @@ def session():
     return s
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def admin_token(session):
     r = session.post(f"{API}/auth/login",
                      json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}, timeout=30)
@@ -29,7 +29,7 @@ def admin_token(session):
     return r.json()["token"]
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def auth_headers(admin_token):
     return {"Authorization": f"Bearer {admin_token}", "Content-Type": "application/json"}
 

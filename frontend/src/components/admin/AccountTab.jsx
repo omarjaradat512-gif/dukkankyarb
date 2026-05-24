@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { apiChangePassword, formatApiError } from "../../lib/api";
+import { apiChangePassword, formatApiError, setToken } from "../../lib/api";
 import { toast } from "sonner";
 import { Input, Field } from "./_widgets";
 import { KeyRound, Save, Loader2, Eye, EyeOff, Shield } from "lucide-react";
@@ -48,8 +48,14 @@ export default function AccountTab() {
         }
         setBusy(true);
         try {
-            await apiChangePassword(current, next);
-            toast.success("تم تغيير كلمة المرور بنجاح ✅");
+            const res = await apiChangePassword(current, next);
+            // The backend issues a NEW token after password change so the
+            // current admin's session stays alive. Other JWTs (old tabs,
+            // stolen tokens) are now invalid.
+            if (res?.token) setToken(res.token);
+            toast.success(res?.message || "تم تغيير كلمة المرور بنجاح ✅", {
+                description: "كل الجلسات القديمة الأخرى تم تسجيل خروجها.",
+            });
             setCurrent("");
             setNext("");
             setConfirm("");

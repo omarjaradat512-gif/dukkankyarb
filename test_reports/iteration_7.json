@@ -1,0 +1,37 @@
+{
+  "summary": "Backend security hardening tested: login rate limiting (8 fails/15min/IP -> 429 with Retry-After), JWT invalidation via iat < password_changed_at, and fresh token returned by change-password. All 8 new security tests pass and all 63 prior regression tests pass (total 71/71).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_auth_security.py",
+    "/app/test_reports/pytest/full_results.xml",
+    "/app/test_reports/pytest/auth_security_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py is 1150 lines - consider splitting into modules (auth, admin, public) per file-size guideline (>700 lines).",
+    "_login_attempts is in-memory only; not safe for multi-worker/multi-instance deployments. Comment in code already notes this; for production, swap to Redis-backed limiter.",
+    "_client_ip() trusts the first X-Forwarded-For value unconditionally - in production behind an untrusted proxy chain this can be spoofed to bypass per-IP rate limit. Acceptable if the only ingress is a trusted proxy.",
+    "Rate-limit applies only to failed attempts; this is by design and correct (success resets counter). Verified.",
+    "iat-based invalidation correctly rejects tokens whose iat < password_changed_at; the +0 skew works because change-password sets password_changed_at first then issues new token (so new_token.iat >= password_changed_at). Verified via test.",
+    "Regression: previous test file test_reviews_faqs_password.py used module-scoped admin_token which became stale after the new password-change-invalidates-tokens behaviour. Fixed by switching the fixture to function scope (test-only fix; no production code change)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_auth_security.py (new)",
+    "/app/backend/tests/test_reviews_faqs_password.py (changed admin_token/auth_headers fixtures from module to function scope to be compatible with new iat-invalidation behaviour)"
+  ],
+  "success_rate": {"backend": "100% (71/71)", "frontend": "not tested (skipped per request)"},
+  "test_credentials": "admin@dukkank.com / omar512@@OoD (restored at end of test run, verified 200 on /api/auth/login)",
+  "seed_data_creation": "None persisted; all test artefacts (TEST_* reviews/faqs) deleted by their own tests.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 71 backend tests green. Rate-limit state is in-memory: after a run the IPs 10.0.0.99 (8 failed entries) remain in _login_attempts for ~15 min; if you need to retest, use fresh X-Forwarded-For values or restart backend. Admin password is restored to 'omar512@@OoD'. The fixture-scope fix in test_reviews_faqs_password.py is required to keep the suite green with the new iat invalidation feature.",
+  "rca of the issue": "Initial test run revealed two test-side issues that emerged because of the new security feature: (1) test_auth_security.py initially referenced /api/admin/audit-log but the real endpoint is /api/admin/audit -> fixed selector + added try/finally to guarantee password restoration even on assertion failure. (2) Existing test_reviews_faqs_password.py used a module-scoped admin_token, which is correctly invalidated by the new iat<password_changed_at check after TestChangePassword.test_happy_path_change_and_restore runs -> changed fixture scope to function so each test acquires a fresh token. Production code under review (server.py rate-limit + iat invalidation) is correct and passing all assertions."
+}
