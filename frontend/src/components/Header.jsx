@@ -1,12 +1,14 @@
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, Heart } from "lucide-react";
 import { useCart } from "../contexts/CartContext";
 import { useStoreData } from "../contexts/DataContext";
+import { useWishlist } from "../contexts/WishlistContext";
 import { CurrencySwitcher } from "./CurrencySwitcher";
 import { ThemeToggle } from "./ThemeToggle";
 
-export const Header = ({ onOpenCart }) => {
+export const Header = ({ onOpenCart, onOpenWishlist }) => {
     const { totalQty } = useCart();
     const { store } = useStoreData();
+    const { count: wishCount } = useWishlist();
     const storeName = store?.name || "دُكانك";
 
     return (
@@ -77,6 +79,22 @@ export const Header = ({ onOpenCart }) => {
 
                 <div className="flex items-center gap-2 sm:gap-3">
                     <ThemeToggle />
+                    <button
+                        onClick={onOpenWishlist}
+                        data-testid="open-wishlist-button"
+                        aria-label="المفضلة"
+                        className="relative inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white dark:bg-white/[0.06] border border-[hsl(var(--brand-ink))]/10 dark:border-white/10 text-[hsl(var(--brand-red))] hover:bg-[hsl(var(--brand-cream-warm))] transition-colors"
+                    >
+                        <Heart className={`w-4 h-4 sm:w-[18px] sm:h-[18px] ${wishCount > 0 ? "fill-[hsl(var(--brand-red))]" : ""}`} />
+                        {wishCount > 0 && (
+                            <span
+                                data-testid="wishlist-badge"
+                                className="absolute -top-1 -left-1 min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-[hsl(var(--brand-red))] text-white text-[10px] font-bold ring-2 ring-[hsl(var(--brand-cream))]"
+                            >
+                                {wishCount}
+                            </span>
+                        )}
+                    </button>
                     <CurrencySwitcher compact />
                     <button
                         onClick={onOpenCart}

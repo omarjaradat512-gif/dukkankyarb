@@ -155,6 +155,7 @@ class Duration(BaseModel):
     label_en: Optional[str] = ""
     four: Optional[float] = None
     five: Optional[float] = None
+    bundleDiscountPct: float = 0.0   # percent (e.g. 10 = 10% off) applied in BundleBuilder when this duration is selected
 
 
 class Subscription(BaseModel):
@@ -214,6 +215,18 @@ class FAQItem(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
+
+
+class NotifyRequestPayload(BaseModel):
+    gameId: str
+    contact: str   # phone or email
+    name: Optional[str] = ""
+
+
+class CartEventPayload(BaseModel):
+    itemType: str   # "subscription" | "game" | "bundle"
+    itemId: str
+    itemName: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -499,6 +512,144 @@ async def change_password(payload: ChangePasswordRequest, current=Depends(get_cu
 
 
 # ---------------------------------------------------------------------------
+# Notify-when-available (customer interest list for out-of-stock games)
+# ---------------------------------------------------------------------------
+@api.post("/notify-requests")
+async def create_notify_request(payload: NotifyRequestPayload):
+    contact = payload.contact.strip()
+    if not contact:
+        raise HTTPException(400, "يرجى إدخال رقم أو إيميل")
+    # Dedupe per (gameId, contact)
+    existing = await db.notify_requests.find_one({"gameId": payload.gameId, "contact": contact})
+    if existing:
+        return {"ok": True, "alreadyRegistered": True}
+    doc = {
+        "id": str(uuid.uuid4()),
+        "gameId": payload.gameId,
+        "contact": contact,
+        "name": (payload.name or "").strip(),
+        "fulfilled": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.notify_requests.insert_one(doc)
+    return {"ok": True, "alreadyRegistered": False}
+
+
+@api.get("/admin/notify-requests")
+async def list_notify_requests(current=Depends(get_current_admin)):
+    items = await db.notify_requests.find({}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    return items
+
+
+@api.delete("/admin/notify-requests/{rid}")
+async def delete_notify_request(rid: str, current=Depends(get_current_admin)):
+    res = await db.notify_requests.delete_one({"id": rid})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Notify request not found")
+    await log_audit(current, "delete", "notify_request", rid)
+    return {"deleted": rid}
+
+
+# ---------------------------------------------------------------------------
+# Cart event tracking (lightweight, public)
+# ---------------------------------------------------------------------------
+@api.post("/events/cart-add")
+async def record_cart_add(payload: CartEventPayload):
+    doc = {
+        "itemType": payload.itemType,
+        "itemId": payload.itemId,
+        "itemName": (payload.itemName or "").strip(),
+        "ts": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.cart_events.insert_one(doc)
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Admin: Analytics
+# ---------------------------------------------------------------------------
+@api.get("/admin/analytics")
+async def get_analytics(days: int = 30, current=Depends(get_current_admin)):
+    days = max(1, min(days, 90))
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+    # Totals
+    subs_total = await db.subscribers.count_documents({})
+    cart_total = await db.cart_events.count_documents({})
+    notify_total = await db.notify_requests.count_documents({})
+    audit_total = await db.audit_log.count_documents({})
+    games_total = await db.games.count_documents({})
+
+    # Subscribers per day (last N days)
+    subs_by_day: Dict[str, int] = {}
+    cursor = db.subscribers.find({"created_at": {"$gte": since}}, {"_id": 0, "created_at": 1})
+    async for d in cursor:
+        day = (d.get("created_at") or "")[:10]
+        if day:
+            subs_by_day[day] = subs_by_day.get(day, 0) + 1
+
+    # Cart events per day
+    cart_by_day: Dict[str, int] = {}
+    cursor = db.cart_events.find({"ts": {"$gte": since}}, {"_id": 0, "ts": 1})
+    async for d in cursor:
+        day = (d.get("ts") or "")[:10]
+        if day:
+            cart_by_day[day] = cart_by_day.get(day, 0) + 1
+
+    # Top items added to cart
+    top_items_raw = await db.cart_events.aggregate([
+        {"$group": {
+            "_id": {"itemType": "$itemType", "itemId": "$itemId", "itemName": "$itemName"},
+            "count": {"$sum": 1}
+        }},
+        {"$sort": {"count": -1}},
+        {"$limit": 10},
+    ]).to_list(10)
+    top_items = [
+        {
+            "itemType": it["_id"].get("itemType", ""),
+            "itemId": it["_id"].get("itemId", ""),
+            "itemName": it["_id"].get("itemName", ""),
+            "count": it["count"],
+        }
+        for it in top_items_raw
+    ]
+
+    # Audit actions breakdown
+    audit_actions_raw = await db.audit_log.aggregate([
+        {"$group": {"_id": "$action", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+    ]).to_list(20)
+    audit_actions = [{"action": a["_id"], "count": a["count"]} for a in audit_actions_raw]
+
+    # Build full day list (fill zeros) — ascending
+    day_list = []
+    from datetime import date
+    base = datetime.now(timezone.utc).date()
+    for i in range(days - 1, -1, -1):
+        d = (base - timedelta(days=i)).isoformat()
+        day_list.append({
+            "date": d,
+            "subscribers": subs_by_day.get(d, 0),
+            "cartAdds": cart_by_day.get(d, 0),
+        })
+
+    return {
+        "totals": {
+            "subscribers": subs_total,
+            "cartEvents": cart_total,
+            "notifyRequests": notify_total,
+            "auditLog": audit_total,
+            "games": games_total,
+        },
+        "timeline": day_list,
+        "topItems": top_items,
+        "auditActions": audit_actions,
+        "rangeDays": days,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Sections — homepage section order & visibility
 # ---------------------------------------------------------------------------
 # Each section is identified by a stable key, has an order index, and a visible flag.
@@ -781,6 +932,28 @@ async def seed_initial_data():
     if await db.subscriptions.count_documents({}) == 0:
         await db.subscriptions.insert_many(list(INITIAL_SUBSCRIPTIONS))
         logger.info(f"Seeded {len(INITIAL_SUBSCRIPTIONS)} subscriptions")
+    else:
+        # Migration: backfill bundleDiscountPct on durations that don't have it
+        async for sub in db.subscriptions.find({}):
+            durations = sub.get("durations", []) or []
+            changed = False
+            for d in durations:
+                if "bundleDiscountPct" not in d or d.get("bundleDiscountPct") is None:
+                    # Sensible default based on id pattern (longer → bigger discount)
+                    did = (d.get("id") or "").lower()
+                    if "12m" in did:
+                        d["bundleDiscountPct"] = 12
+                    elif "3m" in did:
+                        d["bundleDiscountPct"] = 8
+                    else:
+                        d["bundleDiscountPct"] = 5
+                    changed = True
+            if changed:
+                await db.subscriptions.update_one(
+                    {"id": sub["id"]},
+                    {"$set": {"durations": durations}},
+                )
+                logger.info(f"Migrated subscription {sub['id']}: backfilled bundleDiscountPct")
 
     # Games (with order field)
     if await db.games.count_documents({}) == 0:
@@ -833,6 +1006,9 @@ async def on_startup():
     await db.audit_log.create_index("timestamp")
     await db.reviews.create_index("id", unique=True)
     await db.faqs.create_index("id", unique=True)
+    await db.notify_requests.create_index([("gameId", 1), ("contact", 1)])
+    await db.notify_requests.create_index("created_at")
+    await db.cart_events.create_index("ts")
     await seed_admin()
     await seed_initial_data()
     logger.info("Startup complete")

@@ -9,9 +9,7 @@ function getInitialTheme() {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved === "dark" || saved === "light") return saved;
     } catch {}
-    if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        return "dark";
-    }
+    // Default: always light (do NOT follow OS pref unless user explicitly chooses)
     return "light";
 }
 

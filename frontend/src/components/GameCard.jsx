@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { Plus, Check, Share2, Gamepad2, Info } from "lucide-react";
+import { Plus, Check, Share2, Gamepad2, Info, Heart, Bell } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { useLang } from "../contexts/LanguageContext";
 import { useStoreData } from "../contexts/DataContext";
+import { useWishlist } from "../contexts/WishlistContext";
+import { NotifyMeDialog } from "./NotifyMeDialog";
+import { apiRecordCartAdd } from "../lib/api";
 import { toast } from "sonner";
 
 const TIER_LABEL = {
@@ -17,6 +20,7 @@ export const GameCard = ({ game }) => {
     const { format } = useCurrency();
     const { t, lang } = useLang();
     const { store } = useStoreData();
+    const { has: isFav, toggle: toggleFav } = useWishlist();
     const isAvailable = game.available !== false; // default true if missing
     const availableTiers = ["five", "four"].filter((t) => game[t] != null);
     const hasPrice = availableTiers.length > 0;
@@ -28,8 +32,10 @@ export const GameCard = ({ game }) => {
     const [adding, setAdding] = useState(false);
     const [copied, setCopied] = useState(false);
     const [imgError, setImgError] = useState(false);
+    const [notifyOpen, setNotifyOpen] = useState(false);
 
     const price = game[tier];
+    const favored = isFav(game.id);
 
     const handleAdd = () => {
         if (!canBuy || price == null) return;
@@ -41,11 +47,21 @@ export const GameCard = ({ game }) => {
             price,
         };
         add(item);
+        // fire-and-forget analytics event
+        apiRecordCartAdd({ itemType: "game", itemId: game.id, itemName: game.name });
         setAdding(true);
         toast.success(t("toast.gameAddedToCart"), {
             description: `${game.name} (${TIER_LABEL[tier]})`,
         });
         setTimeout(() => setAdding(false), 1200);
+    };
+
+    const handleFavorite = (e) => {
+        e?.stopPropagation?.();
+        const added = toggleFav(game.id);
+        if (added) {
+            toast.success("أُضيفت للمفضلة ❤️", { description: game.name });
+        }
     };
 
     const handleCopyLink = async () => {
@@ -155,12 +171,26 @@ export const GameCard = ({ game }) => {
                     </div>
                 )}
 
-                {/* Share button */}
+                {/* Share + Favorite buttons */}
+                <button
+                    onClick={handleFavorite}
+                    aria-label={favored ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+                    data-testid={`game-${game.id}-fav-button`}
+                    className={`absolute top-3 left-3 inline-flex items-center justify-center w-9 h-9 rounded-full transition-colors backdrop-blur shadow-md z-[4] ${
+                        favored
+                            ? "bg-[hsl(var(--brand-red))] text-white"
+                            : "bg-white/95 hover:bg-white text-[hsl(var(--brand-ink))]"
+                    }`}
+                >
+                    <Heart
+                        className={`w-4 h-4 transition-transform ${favored ? "fill-white scale-110" : ""}`}
+                    />
+                </button>
                 <button
                     onClick={handleCopyLink}
                     aria-label={t("card.share")}
                     data-testid={`game-${game.id}-share-button`}
-                    className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 hover:bg-white text-[hsl(var(--brand-ink))] px-3 py-1.5 text-[11px] font-semibold transition-colors backdrop-blur shadow-md z-[4]"
+                    className="absolute top-14 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 hover:bg-white text-[hsl(var(--brand-ink))] px-3 py-1.5 text-[11px] font-semibold transition-colors backdrop-blur shadow-md z-[4]"
                 >
                     {copied ? (
                         <>
@@ -252,12 +282,20 @@ export const GameCard = ({ game }) => {
                             <Info className="w-4 h-4" />
                         </Link>
                         <button
-                            onClick={handleAdd}
-                            disabled={!canBuy || price == null}
-                            data-testid={`game-${game.id}-add-button`}
-                            className="inline-flex items-center gap-2 rounded-full px-4 h-10 bg-[hsl(var(--brand-ink))] text-[hsl(var(--brand-cream))] text-sm font-semibold hover:bg-[hsl(var(--brand-blue-deep))] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            onClick={isAvailable ? handleAdd : () => setNotifyOpen(true)}
+                            disabled={isAvailable && (!canBuy || price == null)}
+                            data-testid={isAvailable ? `game-${game.id}-add-button` : `game-${game.id}-notify-button`}
+                            className={`inline-flex items-center gap-2 rounded-full px-4 h-10 text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                                isAvailable
+                                    ? "bg-[hsl(var(--brand-ink))] text-[hsl(var(--brand-cream))] hover:bg-[hsl(var(--brand-blue-deep))]"
+                                    : "bg-[hsl(var(--brand-red))] text-white hover:bg-[hsl(var(--brand-red-soft))]"
+                            }`}
                         >
-                            {adding ? (
+                            {!isAvailable ? (
+                                <>
+                                    <Bell className="w-4 h-4" /> أعلمني
+                                </>
+                            ) : adding ? (
                                 <>
                                     <Check className="w-4 h-4" /> {t("card.added")}
                                 </>
@@ -270,6 +308,12 @@ export const GameCard = ({ game }) => {
                     </div>
                 </div>
             </div>
+
+            <NotifyMeDialog
+                open={notifyOpen}
+                onOpenChange={setNotifyOpen}
+                game={game}
+            />
         </article>
     );
 };

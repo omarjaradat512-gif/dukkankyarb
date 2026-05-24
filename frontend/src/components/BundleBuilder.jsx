@@ -10,16 +10,18 @@ import {
 import { useCart } from "../contexts/CartContext";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { useStoreData } from "../contexts/DataContext";
+import { apiRecordCartAdd } from "../lib/api";
 import { toast } from "sonner";
 
 const TIER_LABEL = { four: "PS4", five: "PS5" };
 
-// Discount tiers based on number of items selected
-const getDiscount = (count) => {
-    if (count >= 4) return 0.15;
-    if (count === 3) return 0.1;
-    if (count === 2) return 0.05;
-    return 0;
+// Discount: read from the selected subscription's selected duration.
+// (Each duration has bundleDiscountPct configured from the admin panel.)
+const getDiscountFromDuration = (durationObj) => {
+    if (!durationObj) return 0;
+    const pct = Number(durationObj.bundleDiscountPct);
+    if (!Number.isFinite(pct) || pct < 0) return 0;
+    return Math.min(pct, 100) / 100;
 };
 
 const Section = ({ title, hint, children }) => (
@@ -96,13 +98,13 @@ export const BundleBuilder = () => {
     }, [sub, dur, subPrice, selectedGames, tier]);
 
     const subtotal = lineItems.reduce((s, i) => s + i.price, 0);
-    const discountPct = getDiscount(lineItems.length);
+    // Discount comes from the SELECTED duration of the SELECTED subscription.
+    // If no subscription is selected, no discount is applied.
+    const discountPct = sub && dur && lineItems.length >= 2 ? getDiscountFromDuration(dur) : 0;
     const discount = subtotal * discountPct;
     const total = subtotal - discount;
-    const nextThreshold = lineItems.length < 4
-        ? lineItems.length + 1
-        : null;
-    const nextPct = nextThreshold ? getDiscount(nextThreshold) : null;
+    // Hint: if user hasn't selected a sub yet, hint them to do so for the discount
+    const hintNoSub = !sub && lineItems.length >= 1;
 
     const toggleGame = (id) => {
         setGameIds((prev) =>
@@ -121,13 +123,15 @@ export const BundleBuilder = () => {
                 item.key === "bb-sub"
                     ? `${item.label} — ${TIER_LABEL[tier]}`
                     : `${item.label} (باقتك)`;
+            const itType = item.key.startsWith("bb-sub") ? "subscription" : "game";
             add({
                 key: `${item.key}-${Date.now()}`,
-                type: item.key.startsWith("bb-sub") ? "subscription" : "game",
+                type: itType,
                 title: matchTitle,
                 subtitle: TIER_LABEL[tier],
                 price: item.price,
             });
+            apiRecordCartAdd({ itemType: "bundle", itemId: item.key, itemName: item.label });
         }
         if (discount > 0) {
             add({
@@ -167,27 +171,34 @@ export const BundleBuilder = () => {
                         ضمّ اشتراك + ألعاب، وكل ما زدت عنصر زاد الخصم تلقائياً.
                     </p>
 
-                    {/* Discount ladder */}
-                    <div className="mt-5 grid grid-cols-3 gap-2 max-w-md text-center text-[11px] sm:text-xs">
-                        {[
-                            { count: 2, pct: 5 },
-                            { count: 3, pct: 10 },
-                            { count: 4, pct: 15 },
-                        ].map((step) => {
-                            const active = lineItems.length >= step.count;
-                            return (
-                                <div
-                                    key={step.count}
-                                    className={`rounded-full px-3 py-2 font-bold transition-all ${
-                                        active
-                                            ? "bg-[#7CFF8A]/20 text-[#1a6e22] border-2 border-[#7CFF8A]/40"
-                                            : "bg-[hsl(var(--brand-ink))]/5 text-[hsl(var(--brand-ink))]/55 border-2 border-transparent"
-                                    }`}
-                                >
-                                    {step.count}+ عناصر = خصم {step.pct}%
-                                </div>
-                            );
-                        })}
+                    {/* Discount table — shows each duration's bundle discount */}
+                    <div className="mt-5 max-w-md">
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--brand-ink))]/55 mb-2">
+                            نسب الخصم حسب الاشتراك والمدة
+                        </div>
+                        <div className="grid gap-1.5">
+                            {SUBSCRIPTIONS.flatMap((s) =>
+                                (s.durations || []).map((d) => {
+                                    const pct = Number(d.bundleDiscountPct) || 0;
+                                    if (pct <= 0) return null;
+                                    const active =
+                                        sub?.id === s.id && dur?.id === d.id && lineItems.length >= 2;
+                                    return (
+                                        <div
+                                            key={`${s.id}-${d.id}`}
+                                            className={`flex items-center justify-between rounded-full px-3 py-1.5 text-[11px] sm:text-xs transition-all ${
+                                                active
+                                                    ? "bg-[#7CFF8A]/20 text-[#1a6e22] dark:text-[#7CFF8A] border-2 border-[#7CFF8A]/40 font-bold"
+                                                    : "bg-[hsl(var(--brand-ink))]/5 text-[hsl(var(--brand-ink))]/65 border-2 border-transparent"
+                                            }`}
+                                        >
+                                            <span>{s.name} • {d.label}</span>
+                                            <span className="font-extrabold">خصم {pct}%</span>
+                                        </div>
+                                    );
+                                })
+                            ).filter(Boolean)}
+                        </div>
                     </div>
                 </div>
 
@@ -357,9 +368,14 @@ export const BundleBuilder = () => {
                                     </div>
                                 </div>
 
-                                {nextPct && lineItems.length >= 1 && (
+                                {hintNoSub && (
                                     <div className="text-[11px] mb-4 rounded-xl bg-[hsl(var(--brand-cream))]/8 px-3 py-2 opacity-90">
-                                        أضف عنصر واحد بعد للوصول لخصم {Math.round(nextPct * 100)}% 🎁
+                                        💡 أضف اشتراك للحصول على خصم على كامل الباقة!
+                                    </div>
+                                )}
+                                {sub && dur && lineItems.length === 1 && discountPct === 0 && (
+                                    <div className="text-[11px] mb-4 rounded-xl bg-[hsl(var(--brand-cream))]/8 px-3 py-2 opacity-90">
+                                        أضف لعبة واحدة على الأقل لتفعيل خصم {Math.round(getDiscountFromDuration(dur) * 100)}% 🎁
                                     </div>
                                 )}
                             </>

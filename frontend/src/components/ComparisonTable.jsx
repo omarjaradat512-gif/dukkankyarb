@@ -32,10 +32,10 @@ export const ComparisonTable = () => {
 
                 <div
                     data-testid="comparison-table-wrap"
-                    className="card-elevated rounded-3xl bg-white border border-[hsl(var(--brand-ink))]/10 overflow-hidden"
+                    className="card-elevated rounded-3xl bg-white border border-[hsl(var(--brand-ink))]/10 dark:border-white/10 mt-4 overflow-visible"
                 >
                     {/* Table head */}
-                    <div className="grid grid-cols-[1.4fr_1fr_1fr] sm:grid-cols-[1.6fr_1fr_1fr]">
+                    <div className="grid grid-cols-[1.4fr_1fr_1fr] sm:grid-cols-[1.6fr_1fr_1fr] rounded-t-3xl overflow-hidden">
                         <div className="bg-[hsl(var(--brand-cream))]/60 px-4 sm:px-6 py-5 border-b border-[hsl(var(--brand-ink))]/10">
                             <div className="text-xs font-semibold text-[hsl(var(--brand-ink))]/55 uppercase tracking-wider">
                                 الميزة
@@ -47,7 +47,8 @@ export const ComparisonTable = () => {
                             </div>
                         </div>
                         <div className="bg-[hsl(var(--brand-red))]/10 px-4 sm:px-6 py-5 border-b border-[hsl(var(--brand-ink))]/10 text-center relative">
-                            <span className="absolute -top-2 left-1/2 -translate-x-1/2 inline-block text-[10px] sm:text-[11px] font-bold rounded-full bg-[hsl(var(--brand-red))] text-[hsl(var(--brand-cream))] px-2.5 py-0.5">
+                            <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold rounded-full bg-[hsl(var(--brand-red))] text-[hsl(var(--brand-cream))] px-3 py-1 shadow-md whitespace-nowrap z-10">
+                                <i className="fa-solid fa-fire text-[9px]" />
                                 الأكثر طلباً
                             </span>
                             <div className="text-base sm:text-lg font-bold text-[hsl(var(--brand-red))]">

@@ -50,9 +50,9 @@ INITIAL_SUBSCRIPTIONS = [
         "tagline_en": "Core gaming plans at a great price",
         "accent": "blue",
         "durations": [
-            {"id": "ess-1m",  "label": "شهر واحد", "label_en": "1 Month",  "four": 6.5, "five": None},
-            {"id": "ess-3m",  "label": "٣ شهور",   "label_en": "3 Months", "four": 12,  "five": 19},
-            {"id": "ess-12m", "label": "سنة كاملة","label_en": "12 Months","four": 24,  "five": 48},
+            {"id": "ess-1m",  "label": "شهر واحد", "label_en": "1 Month",  "four": 6.5, "five": None, "bundleDiscountPct": 5},
+            {"id": "ess-3m",  "label": "٣ شهور",   "label_en": "3 Months", "four": 12,  "five": 19,   "bundleDiscountPct": 8},
+            {"id": "ess-12m", "label": "سنة كاملة","label_en": "12 Months","four": 24,  "five": 48,   "bundleDiscountPct": 12},
         ],
     },
     {
@@ -63,9 +63,9 @@ INITIAL_SUBSCRIPTIONS = [
         "tagline_en": "A broader library and richer experience",
         "accent": "red",
         "durations": [
-            {"id": "ext-1m",  "label": "شهر واحد", "label_en": "1 Month",  "four": 9,  "five": None},
-            {"id": "ext-3m",  "label": "٣ شهور",   "label_en": "3 Months", "four": 19, "five": 28},
-            {"id": "ext-12m", "label": "سنة كاملة","label_en": "12 Months","four": 42, "five": 59},
+            {"id": "ext-1m",  "label": "شهر واحد", "label_en": "1 Month",  "four": 9,  "five": None, "bundleDiscountPct": 7},
+            {"id": "ext-3m",  "label": "٣ شهور",   "label_en": "3 Months", "four": 19, "five": 28,   "bundleDiscountPct": 10},
+            {"id": "ext-12m", "label": "سنة كاملة","label_en": "12 Months","four": 42, "five": 59,   "bundleDiscountPct": 15},
         ],
     },
 ]

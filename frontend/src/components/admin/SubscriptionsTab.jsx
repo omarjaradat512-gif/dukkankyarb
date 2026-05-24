@@ -16,6 +16,7 @@ const blankDuration = (id = "") => ({
     label_en: "",
     four: "",
     five: "",
+    bundleDiscountPct: "",
 });
 
 const toForm = (sub) => ({
@@ -24,6 +25,8 @@ const toForm = (sub) => ({
         ...d,
         four: d.four == null ? "" : String(d.four),
         five: d.five == null ? "" : String(d.five),
+        bundleDiscountPct:
+            d.bundleDiscountPct == null ? "" : String(d.bundleDiscountPct),
     })),
 });
 
@@ -40,6 +43,7 @@ const toPayload = (f) => ({
         label_en: d.label_en || "",
         four: numOrNull(d.four),
         five: numOrNull(d.five),
+        bundleDiscountPct: numOrNull(d.bundleDiscountPct) ?? 0,
     })),
 });
 
@@ -147,7 +151,7 @@ export default function SubscriptionsTab({ onChanged }) {
                                         <div
                                             key={d.id}
                                             data-testid={`dur-${d.id}-row`}
-                                            className="grid grid-cols-1 sm:grid-cols-[1fr_140px_140px] gap-2 rounded-xl border-2 border-[hsl(var(--brand-ink))]/10 bg-[hsl(var(--brand-cream))]/40 p-3"
+                                            className="grid grid-cols-1 sm:grid-cols-[1fr_120px_120px_140px] gap-2 rounded-xl border-2 border-[hsl(var(--brand-ink))]/10 bg-[hsl(var(--brand-cream))]/40 p-3"
                                         >
                                             <Field label="المدة">
                                                 <Input
@@ -172,6 +176,16 @@ export default function SubscriptionsTab({ onChanged }) {
                                                     onChange={(e) => setDur(idx, "five", e.target.value)}
                                                     inputMode="decimal"
                                                     dir="ltr"
+                                                />
+                                            </Field>
+                                            <Field label="خصم الباقة %" hint="يطبَّق في 'ابني باقتك' عند اختيار هذه المدة">
+                                                <Input
+                                                    data-testid={`dur-${d.id}-bundle-discount`}
+                                                    value={d.bundleDiscountPct}
+                                                    onChange={(e) => setDur(idx, "bundleDiscountPct", e.target.value)}
+                                                    inputMode="decimal"
+                                                    dir="ltr"
+                                                    placeholder="0"
                                                 />
                                             </Field>
                                         </div>

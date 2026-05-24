@@ -8,6 +8,7 @@ import { DataProvider, useStoreData } from "./contexts/DataContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { WishlistProvider } from "./contexts/WishlistContext";
 import { Header } from "./components/Header";
 import { Hero } from "./components/Hero";
 import { Ticker } from "./components/Ticker";
@@ -26,6 +27,7 @@ import { PromoBanner } from "./components/PromoBanner";
 import { SocialProofToast } from "./components/SocialProofToast";
 import { EmailSignup } from "./components/EmailSignup";
 import { HomeSkeleton } from "./components/Skeletons";
+import { WishlistDrawer } from "./components/WishlistDrawer";
 import GameDetail from "./pages/GameDetail";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -151,6 +153,7 @@ const SECTION_RENDERERS = {
 
 function HomePage() {
     const [cartOpen, setCartOpen] = useState(false);
+    const [wishOpen, setWishOpen] = useState(false);
     const { subscriptions, games, store, sections, waTemplates, loading } = useStoreData();
 
     useEffect(() => {
@@ -175,7 +178,7 @@ function HomePage() {
     if (loading && games.length === 0) {
         return (
             <div className="min-h-screen bg-[hsl(var(--brand-cream))] grain-bg" data-testid="app-root">
-                <Header onOpenCart={() => setCartOpen(true)} />
+                <Header onOpenCart={() => setCartOpen(true)} onOpenWishlist={() => setWishOpen(true)} />
                 <HomeSkeleton />
                 <Footer />
             </div>
@@ -189,7 +192,7 @@ function HomePage() {
             className="min-h-screen bg-[hsl(var(--brand-cream))] grain-bg"
             data-testid="app-root"
         >
-            <Header onOpenCart={() => setCartOpen(true)} />
+            <Header onOpenCart={() => setCartOpen(true)} onOpenWishlist={() => setWishOpen(true)} />
             <PromoBanner />
             <Hero />
             <Ticker />
@@ -211,6 +214,7 @@ function HomePage() {
             <Footer />
 
             <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
+            <WishlistDrawer open={wishOpen} onOpenChange={setWishOpen} />
             <SocialProofToast />
 
             <button
@@ -233,26 +237,28 @@ function App() {
                     <AuthProvider>
                         <DataProvider>
                             <CurrencyProvider>
-                                <CartProvider>
-                                    <Routes>
-                                        <Route path="/" element={<HomePage />} />
-                                        <Route path="/game/:id" element={<GameDetail />} />
-                                        <Route path="/admin/login" element={<AdminLogin />} />
-                                        <Route path="/admin" element={<AdminDashboard />} />
-                                    </Routes>
-                                    <Toaster
-                                        position="top-center"
-                                        richColors
-                                        closeButton
-                                        toastOptions={{
-                                            style: {
-                                                fontFamily: "'Tajawal', sans-serif",
-                                                direction: "rtl",
-                                                textAlign: "right",
-                                            },
-                                        }}
-                                    />
-                                </CartProvider>
+                                <WishlistProvider>
+                                    <CartProvider>
+                                        <Routes>
+                                            <Route path="/" element={<HomePage />} />
+                                            <Route path="/game/:id" element={<GameDetail />} />
+                                            <Route path="/admin/login" element={<AdminLogin />} />
+                                            <Route path="/admin" element={<AdminDashboard />} />
+                                        </Routes>
+                                        <Toaster
+                                            position="top-center"
+                                            richColors
+                                            closeButton
+                                            toastOptions={{
+                                                style: {
+                                                    fontFamily: "'Tajawal', sans-serif",
+                                                    direction: "rtl",
+                                                    textAlign: "right",
+                                                },
+                                            }}
+                                        />
+                                    </CartProvider>
+                                </WishlistProvider>
                             </CurrencyProvider>
                         </DataProvider>
                     </AuthProvider>

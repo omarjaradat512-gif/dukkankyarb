@@ -50,6 +50,22 @@ export const apiDeleteFaq = (id) => client.delete(`/admin/faqs/${id}`).then((r) 
 export const apiChangePassword = (current_password, new_password) =>
     client.put("/admin/change-password", { current_password, new_password }).then((r) => r.data);
 
+// Notify-when-available
+export const apiCreateNotifyRequest = (data) =>
+    client.post("/notify-requests", data).then((r) => r.data);
+export const apiListNotifyRequests = () =>
+    client.get("/admin/notify-requests").then((r) => r.data);
+export const apiDeleteNotifyRequest = (id) =>
+    client.delete(`/admin/notify-requests/${id}`).then((r) => r.data);
+
+// Cart event tracking (fire-and-forget; never block UI on it)
+export const apiRecordCartAdd = (data) =>
+    client.post("/events/cart-add", data).then((r) => r.data).catch(() => null);
+
+// Analytics
+export const apiGetAnalytics = (days = 30) =>
+    client.get(`/admin/analytics?days=${days}`).then((r) => r.data);
+
 // Auth
 export const apiLogin = (email, password) =>
     client.post("/auth/login", { email, password }).then((r) => r.data);

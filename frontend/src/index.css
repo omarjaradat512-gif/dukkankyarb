@@ -128,6 +128,86 @@ html, body, [data-testid="app-root"], [data-testid="admin-dashboard"] {
     transition: background-color 0.35s ease, color 0.25s ease;
 }
 
+/* ─── Dark-mode global readability rescue ──────────────────────────
+   We use brand-cream / brand-ink CSS variables, which already flip
+   under .dark. But many components were authored with literal
+   "bg-white" / "bg-white/60" / "bg-black/X" classes — Tailwind
+   compiles those as RGB literals so they DON'T auto-flip. The rules
+   below remap those literals to dark-mode equivalents and ensure
+   ANY text that opted into a faded brand-ink color stays visible.
+*/
+.dark body {
+    background: hsl(var(--brand-cream));
+    color: hsl(var(--brand-ink));
+}
+
+/* Literal white surfaces → dark surfaces */
+.dark .bg-white {
+    background-color: hsl(220 22% 13%) !important;
+}
+.dark .bg-white\/60,
+.dark .bg-white\/70,
+.dark .bg-white\/85,
+.dark .bg-white\/95 {
+    background-color: hsl(220 22% 13% / 0.85) !important;
+}
+.dark .bg-white\/40 {
+    background-color: hsl(220 22% 13% / 0.45) !important;
+}
+
+/* Text rendered on dark backgrounds with literal black/dark colors */
+.dark .text-\[\#3a2400\] {
+    color: hsl(38 30% 18%) !important; /* keep dark on the gold gradient (best-seller chip) */
+}
+
+/* Borders authored with literal black were fine; keep them.
+   But brand-ink based borders with opacity stay visible because
+   brand-ink is now near-white in dark mode. */
+
+/* Soft-cream backgrounds (e.g. striped table rows, footers) */
+.dark .bg-\[hsl\(var\(--brand-cream\)\)\]\/40,
+.dark .bg-\[hsl\(var\(--brand-cream\)\)\]\/60,
+.dark .bg-\[hsl\(var\(--brand-cream\)\)\]\/70 {
+    background-color: hsl(var(--brand-cream-warm) / 0.6);
+}
+
+/* Accent: keep red strong (already bright in dark) */
+.dark .text-\[hsl\(var\(--brand-red\)\)\] {
+    color: hsl(var(--brand-red)) !important;
+}
+
+/* Lift card-elevated shadows so they read on dark bg */
+.dark .card-elevated {
+    box-shadow:
+        0 1px 0 hsl(0 0% 100% / 0.04),
+        0 8px 24px -8px hsl(0 0% 0% / 0.55),
+        0 24px 48px -24px hsl(0 0% 0% / 0.55) !important;
+}
+.dark .card-elevated:hover {
+    box-shadow:
+        0 1px 0 hsl(0 0% 100% / 0.06),
+        0 14px 36px -8px hsl(0 0% 0% / 0.65),
+        0 36px 64px -24px hsl(0 0% 0% / 0.65) !important;
+}
+
+/* Inputs/selects: keep dark surface */
+.dark input,
+.dark textarea,
+.dark select {
+    background-color: hsl(220 18% 16%) !important;
+    color: hsl(var(--brand-ink)) !important;
+    border-color: hsl(220 18% 28%) !important;
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+    color: hsl(220 12% 50%) !important;
+}
+
+/* Sticky header backdrop becomes opaque dark */
+.dark .backdrop-blur-md.bg-\[hsl\(var\(--brand-cream\)\)\]\/85 {
+    background-color: hsl(var(--brand-cream) / 0.92) !important;
+}
+
 /* Skeleton shimmer */
 @keyframes skeleton-shimmer {
     0% { background-position: 200% 0; }
@@ -224,6 +304,16 @@ html, body, [data-testid="app-root"], [data-testid="admin-dashboard"] {
 .tier-pill[data-selected="false"] {
     background: white;
     color: hsl(var(--brand-ink));
+}
+.dark .tier-pill[data-selected="false"] {
+    background: hsl(220 22% 13%);
+    color: hsl(var(--brand-ink));
+    border-color: hsl(220 18% 28%);
+}
+.dark .tier-pill[data-selected="true"] {
+    background: hsl(var(--brand-blue));
+    color: hsl(220 26% 8%);
+    border-color: hsl(var(--brand-blue));
 }
 
 

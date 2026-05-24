@@ -16,8 +16,11 @@ import AuditTab from "../components/admin/AuditTab";
 import ReviewsTab from "../components/admin/ReviewsTab";
 import FaqTab from "../components/admin/FaqTab";
 import AccountTab from "../components/admin/AccountTab";
+import NotifyTab from "../components/admin/NotifyTab";
+import AnalyticsTab from "../components/admin/AnalyticsTab";
 
 const TABS = [
+    { value: "analytics",     label: "الإحصائيات" },
     { value: "store",         label: "إعدادات المتجر" },
     { value: "sections",      label: "ترتيب الأقسام" },
     { value: "subscriptions", label: "الاشتراكات" },
@@ -26,6 +29,7 @@ const TABS = [
     { value: "reviews",       label: "التقييمات" },
     { value: "faqs",          label: "الأسئلة الشائعة" },
     { value: "marketing",     label: "التسويق" },
+    { value: "notify",        label: "طلبات الإشعار" },
     { value: "audit",         label: "سجل التدقيق" },
     { value: "account",       label: "الحساب" },
 ];
@@ -35,7 +39,7 @@ export default function AdminDashboard() {
     const { t } = useLang();
     const { reload } = useStoreData();
     const navigate = useNavigate();
-    const [tab, setTab] = useState("store");
+    const [tab, setTab] = useState("analytics");
 
     useEffect(() => {
         if (!loading && !user) {
@@ -107,7 +111,7 @@ export default function AdminDashboard() {
                 <Tabs value={tab} onValueChange={setTab} className="w-full">
                     <TabsList
                         data-testid="admin-tabs"
-                        className="w-full grid grid-cols-2 sm:grid-cols-5 gap-1 bg-white/70 dark:bg-white/[0.06] border border-[hsl(var(--brand-ink))]/10 dark:border-white/10 rounded-2xl p-1 h-auto"
+                        className="w-full grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-1 bg-white/70 dark:bg-white/[0.06] border border-[hsl(var(--brand-ink))]/10 dark:border-white/10 rounded-2xl p-1 h-auto"
                     >
                         {TABS.map((tb) => (
                             <TabsTrigger
@@ -123,6 +127,12 @@ export default function AdminDashboard() {
 
                     <TabsContent value="store" className="mt-6">
                         <StoreSettingsTab onSaved={reload} />
+                    </TabsContent>
+                    <TabsContent value="analytics" className="mt-6">
+                        <AnalyticsTab />
+                    </TabsContent>
+                    <TabsContent value="notify" className="mt-6">
+                        <NotifyTab />
                     </TabsContent>
                     <TabsContent value="sections" className="mt-6">
                         <SectionsTab onChanged={reload} />

@@ -3,6 +3,7 @@ import { Plus, Check } from "lucide-react";
 import { useCart } from "../contexts/CartContext";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { useLang, pickLocalized } from "../contexts/LanguageContext";
+import { apiRecordCartAdd } from "../lib/api";
 import { toast } from "sonner";
 
 const TIER_LABEL = {
@@ -61,6 +62,7 @@ export const SubscriptionCard = ({ sub }) => {
             price,
         };
         add(item);
+        apiRecordCartAdd({ itemType: "subscription", itemId: sub.id, itemName: subName });
         setAdding(true);
         toast.success(t("toast.addedToCart"), {
             description: `${item.title} (${item.subtitle})`,
