@@ -1,72 +1,63 @@
 # PRD — دُكانك (Dukkank)
 
-## Project
-متجر اشتراكات وألعاب رقمية (Arabic RTL) — Checkout via WhatsApp deep link, no payment gateway.
+## Status: 6 iterations completed
+- **Iter 1-5**: Admin panel basics, dark mode, wishlist, notify-when-available, bundle discount per duration, analytics
+- **Iter 6 (current)**: **Full CMS** — every static page text editable from admin in a beautiful section-by-section tab
 
-## Status: 5 iterations completed
-- **Iter 1**: Admin Panel (login, store CRUD, subscriptions CRUD, games CRUD, bundles CRUD)
-- **Iter 2**: Sections-order tab, Games editor (3-section layout + live preview)
-- **Iter 3**: Live Social Proof, Promo Banner (countdown), WhatsApp Templates, Email Signup, Audit Log, Image Upload
-- **Iter 4**: Reviews & FAQ admin, Change Password, Dark Mode, Skeleton Loaders
-- **Iter 5 (current)**: Wishlist, Notify-when-available, per-duration Bundle Discount, Analytics dashboard, Comparison badge fix, Dark Mode contrast fixes (default = LIGHT now)
+## Iter 6 Changes (Site Content CMS)
+- **Backend**: New `site_content` document in MongoDB settings collection, 11 sections (hero, essential, extra, comparison, bundles, bundleBuilder, games, reviews, faq, emailSignup, footer). GET `/api/content` (public) + PUT `/api/admin/content` (admin). Whitelist + audit log integration.
+- **Frontend**: All static text strings replaced with `content.section.field` reads. Components updated: Hero, App.js section renderers, Bundles, BundleBuilder, ComparisonTable, Reviews, FAQ.
+- **New Admin Tab "محتوى الموقع" (ContentTab)**: Accordion per section (collapsible), per-section save (not all-or-nothing). Field types supported:
+  - `text` (single line)
+  - `textarea` (multi-line)
+  - `array-string` (e.g. featureBullets) with add/remove/reorder
+  - `array-row` (e.g. comparison.rows) with editable columns including bool toggles for ✓/✗ per plan
+- **Migration**: backfills missing top-level + sub-keys on existing data so new fields don't appear blank.
 
 ## Architecture
 - Backend: FastAPI + Motor (MongoDB) + JWT bcrypt + StaticFiles
 - Frontend: React (CRA) + Tailwind + shadcn/ui + react-router-dom v7 + recharts. Arabic RTL.
-- Auth: Bearer JWT 24h in localStorage. Admin seeded from env.
-- Theme: CSS-variable based light/dark with `.dark` class. **Default = light** (no longer follows OS pref). Persisted in localStorage.
-- Wishlist: localStorage only, no auth required.
+- Auth: Bearer JWT 24h. Admin seeded from env.
+- Theme: CSS-variable based light/dark. Default = light.
 
-## Implemented Features
+## Admin Panel — 13 tabs total
+1. **الإحصائيات** — KPI cards + recharts
+2. **محتوى الموقع** *(new)* — full CMS for all page text
+3. **إعدادات المتجر** — name/tagline/whatsapp/instagram
+4. **ترتيب الأقسام** — drag/visibility
+5. **الاشتراكات** — names, durations (prices PS4/PS5 + bundleDiscountPct)
+6. **الألعاب** — CRUD + image upload + preview
+7. **الباقات** — bundle CRUD
+8. **التقييمات** — CRUD with star picker
+9. **الأسئلة الشائعة** — CRUD with 10 icon picker
+10. **التسويق** — Promo, Social Proof, WhatsApp Templates, Subscribers
+11. **طلبات الإشعار** — grouped by game + WhatsApp deep-link
+12. **سجل التدقيق** — last N admin actions
+13. **الحساب** — change password
 
-### Public-facing (Customer)
-- Hero, Ticker, Recommender quiz, PS+ Essential/Extra subscriptions
-- Bundles, **BundleBuilder** with **per-subscription-per-duration discount %** (admin-configurable, no more hardcoded count-based tiers)
-- Games grid with details + **Wishlist heart button** (saves to localStorage)
-- **NotifyMe dialog** on unavailable games (records customer interest)
-- EmailSignup, Reviews (CMS), FAQ (CMS), Comparison table (badge fixed)
-- Cart with WhatsApp checkout
-- PromoBanner, SocialProofToast
-- **Dark Mode** toggle (default = light, persisted)
-- Skeleton loaders during initial data fetch
-- **Wishlist Drawer** accessible via header heart icon
+## Backend Endpoints
+- Public: `/api/{store,subscriptions,games,bundles,sections,promo,social-proof,wa-templates,reviews,faqs,content}`
+- Public actions: `/api/subscribers` POST, `/api/notify-requests` POST, `/api/events/cart-add` POST
+- Auth: `/api/auth/{login,me}`
+- Admin: `/api/admin/{content,store,sections,subscriptions/*,games/*,bundles/*,reviews/*,faqs/*,notify-requests/*,promo,social-proof,wa-templates,subscribers/*,upload,audit,change-password,analytics}`
 
-### Admin Panel (`/admin`) — 12 tabs
-1. **الإحصائيات** *(new)* — KPI cards + recharts: 30-day timeline (subscribers + cart events), top-10 cart items, audit-actions pie chart, range selector (7/14/30/90 days)
-2. **إعدادات المتجر** — name, tagline, whatsapp, instagram
-3. **ترتيب الأقسام** — drag/visibility per section
-4. **الاشتراكات** — names, taglines, duration prices (PS4/PS5), **bundleDiscountPct per duration**
-5. **الألعاب** — CRUD with image upload + live preview
-6. **الباقات** — bundle CRUD
-7. **التقييمات** — CRUD with star picker
-8. **الأسئلة الشائعة** — CRUD with 10-icon picker
-9. **التسويق** — Promo Banner, Social Proof, WhatsApp Templates, Subscribers
-10. **طلبات الإشعار** *(new)* — grouped by game; copy-all-contacts; WhatsApp deep-link if phone
-11. **سجل التدقيق** — last N admin actions
-12. **الحساب** — change password with strength meter
-
-### Backend Endpoints
-Public reads: `/api/{store,subscriptions,games,bundles,sections,promo,social-proof,wa-templates,reviews,faqs}`
-Auth: `/api/auth/{login,me}`
-Public actions: `/api/subscribers` (POST), `/api/notify-requests` (POST), `/api/events/cart-add` (POST)
-Admin CRUD: `/api/admin/{store,sections,subscriptions/{id},games/{id},bundles/{id},reviews/{id},faqs/{id},notify-requests/{id},promo,social-proof,wa-templates,subscribers/{email},upload,audit,change-password}`
-Analytics: `/api/admin/analytics?days={7|14|30|90}` — returns totals, timeline, topItems, auditActions
-
-## Tests
-- **Iter 5 backend pytest: 22/22 pass** (notify, cart-events, analytics, bundleDiscountPct migration & persistence)
-- **Iter 4 pytest: 20/20 still pass** (reviews, faqs, change-password regression)
-- Iter 1-3 backend: 39/39 still pass
-- Frontend visually verified: dark mode professional in all sections, wishlist E2E works, comparison badge unclipped, all 12 admin tabs render
+## Tests (cumulative)
+- **Iter 6 CMS: 21/21 ✅** — content endpoints, partial updates, auth gates, audit log, array shapes
+- **Iter 5: 22/22 ✅** still pass — notify, cart events, analytics, bundleDiscountPct
+- **Iter 4: 20/20 ✅** still pass — reviews, faqs, change-password
+- **Iter 1-3: 39/39 ✅** still pass — base endpoints
+- **Total: 102/102 backend tests passing**
 
 ## Test Credentials
 `/app/memory/test_credentials.md` — admin@dukkank.com / omar512@@OoD
 
 ## Backlog
-- P2: Send the discount code via email (SendGrid/Resend)
+- P2: SendGrid/Resend email integration for discount codes & order notifications
 - P2: Token invalidation on password change
-- P2: Rate limiting on POST /api/events/cart-add (analytics abuse prevention)
-- P2: Phone/email regex validation on /api/notify-requests
-- P3: Multi-admin support
+- P2: Rate limiting on POST `/api/events/cart-add` to prevent analytics abuse
+- P2: Phone/email validation on `/api/notify-requests`
+- P2: Deep-merge for content sub-keys (currently full-section overwrite — safe today since FE sends full section, but more robust would be sub-key whitelist)
+- P3: Split server.py into routers (~1080 lines now)
+- P3: Multi-admin support + roles
 - P3: PWA / offline mode
-- P3: Split server.py into routers (now ~1036 lines)
-- P3: Add DB index on cart_events.ts and subscribers.created_at for scale
+- P3: Per-section Pydantic models for richer content validation
