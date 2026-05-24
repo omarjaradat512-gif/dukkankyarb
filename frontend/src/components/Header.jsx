@@ -2,6 +2,7 @@ import { ShoppingBag } from "lucide-react";
 import { useCart } from "../contexts/CartContext";
 import { useStoreData } from "../contexts/DataContext";
 import { CurrencySwitcher } from "./CurrencySwitcher";
+import { ThemeToggle } from "./ThemeToggle";
 
 export const Header = ({ onOpenCart }) => {
     const { totalQty } = useCart();
@@ -11,7 +12,7 @@ export const Header = ({ onOpenCart }) => {
     return (
         <header
             data-testid="site-header"
-            className="sticky top-0 z-40 backdrop-blur-md bg-[hsl(var(--brand-cream))]/85 border-b border-[hsl(var(--brand-ink))]/10"
+            className="sticky top-0 z-40 backdrop-blur-md bg-[hsl(var(--brand-cream))]/85 border-b border-[hsl(var(--brand-ink))]/10 dark:border-white/10"
         >
             <div className="max-w-7xl mx-auto px-4 sm:px-8 h-16 sm:h-20 flex items-center justify-between gap-3">
                 <a
@@ -75,6 +76,7 @@ export const Header = ({ onOpenCart }) => {
                 </nav>
 
                 <div className="flex items-center gap-2 sm:gap-3">
+                    <ThemeToggle />
                     <CurrencySwitcher compact />
                     <button
                         onClick={onOpenCart}

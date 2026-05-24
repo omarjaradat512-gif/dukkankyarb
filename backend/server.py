@@ -21,7 +21,7 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
-from initial_data import INITIAL_STORE, INITIAL_SUBSCRIPTIONS, INITIAL_GAMES, INITIAL_BUNDLES
+from initial_data import INITIAL_STORE, INITIAL_SUBSCRIPTIONS, INITIAL_GAMES, INITIAL_BUNDLES, INITIAL_REVIEWS, INITIAL_FAQS
 
 # ---------------------------------------------------------------------------
 # Setup
@@ -193,6 +193,29 @@ class Bundle(BaseModel):
     available: bool = True
 
 
+class Review(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    name: str
+    rating: int = 5
+    text: str
+    order: int = 0
+
+
+class FAQItem(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    icon: str = "help-circle"   # lucide icon key (e.g. "truck", "credit-card", "shield-check", "help-circle")
+    q: str
+    a: str
+    order: int = 0
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
 # ---------------------------------------------------------------------------
 # Public endpoints
 # ---------------------------------------------------------------------------
@@ -231,6 +254,18 @@ async def list_games():
 @api.get("/bundles")
 async def list_bundles():
     items = await db.bundles.find({}, {"_id": 0}).to_list(100)
+    return items
+
+
+@api.get("/reviews")
+async def list_reviews():
+    items = await db.reviews.find({}, {"_id": 0}).sort("order", 1).to_list(200)
+    return items
+
+
+@api.get("/faqs")
+async def list_faqs():
+    items = await db.faqs.find({}, {"_id": 0}).sort("order", 1).to_list(200)
     return items
 
 
@@ -369,6 +404,98 @@ async def delete_bundle(bundle_id: str, current=Depends(get_current_admin)):
         raise HTTPException(404, "Bundle not found")
     await log_audit(current, "delete", "bundle", bundle_id, bundle_id)
     return {"deleted": bundle_id}
+
+
+# ---------------------------------------------------------------------------
+# Admin: Reviews
+# ---------------------------------------------------------------------------
+@api.post("/admin/reviews")
+async def create_review(payload: Review, current=Depends(get_current_admin)):
+    if await db.reviews.find_one({"id": payload.id}):
+        raise HTTPException(400, "Review id already exists")
+    doc = payload.model_dump()
+    if not doc.get("order"):
+        doc["order"] = await db.reviews.count_documents({})
+    await db.reviews.insert_one(doc)
+    await log_audit(current, "create", "review", payload.id, payload.name)
+    doc.pop("_id", None)
+    return doc
+
+
+@api.put("/admin/reviews/{rid}")
+async def update_review(rid: str, payload: Review, current=Depends(get_current_admin)):
+    data = payload.model_dump()
+    data["id"] = rid
+    res = await db.reviews.update_one({"id": rid}, {"$set": data})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Review not found")
+    await log_audit(current, "update", "review", rid, payload.name)
+    return data
+
+
+@api.delete("/admin/reviews/{rid}")
+async def delete_review(rid: str, current=Depends(get_current_admin)):
+    existing = await db.reviews.find_one({"id": rid})
+    res = await db.reviews.delete_one({"id": rid})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Review not found")
+    await log_audit(current, "delete", "review", rid, (existing or {}).get("name", rid))
+    return {"deleted": rid}
+
+
+# ---------------------------------------------------------------------------
+# Admin: FAQs
+# ---------------------------------------------------------------------------
+@api.post("/admin/faqs")
+async def create_faq(payload: FAQItem, current=Depends(get_current_admin)):
+    if await db.faqs.find_one({"id": payload.id}):
+        raise HTTPException(400, "FAQ id already exists")
+    doc = payload.model_dump()
+    if not doc.get("order"):
+        doc["order"] = await db.faqs.count_documents({})
+    await db.faqs.insert_one(doc)
+    await log_audit(current, "create", "faq", payload.id, payload.q[:60])
+    doc.pop("_id", None)
+    return doc
+
+
+@api.put("/admin/faqs/{fid}")
+async def update_faq(fid: str, payload: FAQItem, current=Depends(get_current_admin)):
+    data = payload.model_dump()
+    data["id"] = fid
+    res = await db.faqs.update_one({"id": fid}, {"$set": data})
+    if res.matched_count == 0:
+        raise HTTPException(404, "FAQ not found")
+    await log_audit(current, "update", "faq", fid, payload.q[:60])
+    return data
+
+
+@api.delete("/admin/faqs/{fid}")
+async def delete_faq(fid: str, current=Depends(get_current_admin)):
+    existing = await db.faqs.find_one({"id": fid})
+    res = await db.faqs.delete_one({"id": fid})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "FAQ not found")
+    await log_audit(current, "delete", "faq", fid, (existing or {}).get("q", fid)[:60])
+    return {"deleted": fid}
+
+
+# ---------------------------------------------------------------------------
+# Admin: Change Password
+# ---------------------------------------------------------------------------
+@api.put("/admin/change-password")
+async def change_password(payload: ChangePasswordRequest, current=Depends(get_current_admin)):
+    if len(payload.new_password) < 8:
+        raise HTTPException(400, "كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل")
+    user = await db.users.find_one({"id": current["id"]})
+    if not user:
+        raise HTTPException(404, "User not found")
+    if not verify_password(payload.current_password, user.get("password_hash", "")):
+        raise HTTPException(400, "كلمة المرور الحالية غير صحيحة")
+    new_hash = hash_password(payload.new_password)
+    await db.users.update_one({"id": current["id"]}, {"$set": {"password_hash": new_hash}})
+    await log_audit(current, "update", "account", current["id"], "تغيير كلمة المرور")
+    return {"ok": True, "message": "تم تغيير كلمة المرور بنجاح"}
 
 
 # ---------------------------------------------------------------------------
@@ -670,6 +797,16 @@ async def seed_initial_data():
         await db.bundles.insert_many(list(INITIAL_BUNDLES))
         logger.info(f"Seeded {len(INITIAL_BUNDLES)} bundles")
 
+    # Reviews
+    if await db.reviews.count_documents({}) == 0:
+        await db.reviews.insert_many(list(INITIAL_REVIEWS))
+        logger.info(f"Seeded {len(INITIAL_REVIEWS)} reviews")
+
+    # FAQs
+    if await db.faqs.count_documents({}) == 0:
+        await db.faqs.insert_many(list(INITIAL_FAQS))
+        logger.info(f"Seeded {len(INITIAL_FAQS)} faqs")
+
     # Sections: migrate to include any new default sections that aren't already present.
     sec_doc = await db.settings.find_one({"key": "sections"})
     if sec_doc:
@@ -694,6 +831,8 @@ async def on_startup():
     await db.bundles.create_index("id", unique=True)
     await db.subscribers.create_index("email", unique=True)
     await db.audit_log.create_index("timestamp")
+    await db.reviews.create_index("id", unique=True)
+    await db.faqs.create_index("id", unique=True)
     await seed_admin()
     await seed_initial_data()
     logger.info("Startup complete")

@@ -7,6 +7,7 @@ import { CurrencyProvider } from "./contexts/CurrencyContext";
 import { DataProvider, useStoreData } from "./contexts/DataContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import { Header } from "./components/Header";
 import { Hero } from "./components/Hero";
 import { Ticker } from "./components/Ticker";
@@ -24,6 +25,7 @@ import { CompareButton } from "./components/GameCompare";
 import { PromoBanner } from "./components/PromoBanner";
 import { SocialProofToast } from "./components/SocialProofToast";
 import { EmailSignup } from "./components/EmailSignup";
+import { HomeSkeleton } from "./components/Skeletons";
 import GameDetail from "./pages/GameDetail";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -172,11 +174,10 @@ function HomePage() {
 
     if (loading && games.length === 0) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[hsl(var(--brand-cream))]">
-                <div className="text-center">
-                    <div className="w-12 h-12 mx-auto border-4 border-[hsl(var(--brand-blue-deep))] border-t-transparent rounded-full animate-spin mb-3" />
-                    <p className="text-sm text-[hsl(var(--brand-ink))]/60">جاري التحميل…</p>
-                </div>
+            <div className="min-h-screen bg-[hsl(var(--brand-cream))] grain-bg" data-testid="app-root">
+                <Header onOpenCart={() => setCartOpen(true)} />
+                <HomeSkeleton />
+                <Footer />
             </div>
         );
     }
@@ -227,34 +228,36 @@ function HomePage() {
 function App() {
     return (
         <BrowserRouter>
-            <LanguageProvider>
-                <AuthProvider>
-                    <DataProvider>
-                        <CurrencyProvider>
-                            <CartProvider>
-                                <Routes>
-                                    <Route path="/" element={<HomePage />} />
-                                    <Route path="/game/:id" element={<GameDetail />} />
-                                    <Route path="/admin/login" element={<AdminLogin />} />
-                                    <Route path="/admin" element={<AdminDashboard />} />
-                                </Routes>
-                                <Toaster
-                                    position="top-center"
-                                    richColors
-                                    closeButton
-                                    toastOptions={{
-                                        style: {
-                                            fontFamily: "'Tajawal', sans-serif",
-                                            direction: "rtl",
-                                            textAlign: "right",
-                                        },
-                                    }}
-                                />
-                            </CartProvider>
-                        </CurrencyProvider>
-                    </DataProvider>
-                </AuthProvider>
-            </LanguageProvider>
+            <ThemeProvider>
+                <LanguageProvider>
+                    <AuthProvider>
+                        <DataProvider>
+                            <CurrencyProvider>
+                                <CartProvider>
+                                    <Routes>
+                                        <Route path="/" element={<HomePage />} />
+                                        <Route path="/game/:id" element={<GameDetail />} />
+                                        <Route path="/admin/login" element={<AdminLogin />} />
+                                        <Route path="/admin" element={<AdminDashboard />} />
+                                    </Routes>
+                                    <Toaster
+                                        position="top-center"
+                                        richColors
+                                        closeButton
+                                        toastOptions={{
+                                            style: {
+                                                fontFamily: "'Tajawal', sans-serif",
+                                                direction: "rtl",
+                                                textAlign: "right",
+                                            },
+                                        }}
+                                    />
+                                </CartProvider>
+                            </CurrencyProvider>
+                        </DataProvider>
+                    </AuthProvider>
+                </LanguageProvider>
+            </ThemeProvider>
         </BrowserRouter>
     );
 }

@@ -45,6 +45,15 @@ const FALLBACK_WA = {
     orderFooter: "شكراً لكم 🌟",
 };
 
+const FALLBACK_REVIEWS = [
+    { id: "rev-1", name: "جعفر", rating: 5, text: "تعامل ممتاز ومتجر موثوق 🙏", order: 0 },
+    { id: "rev-2", name: "زيد", rating: 5, text: "ما شاء الله تعامل ممتاز 🔥", order: 1 },
+];
+
+const FALLBACK_FAQS = [
+    { id: "delivery", icon: "truck", q: "كيف يتم تسليم الطلب؟", a: "يتم التسليم فوراً عبر الواتساب.", order: 0 },
+];
+
 export function DataProvider({ children }) {
     const [store, setStore] = useState(FALLBACK_STORE);
     const [subscriptions, setSubscriptions] = useState(FALLBACK_SUBS);
@@ -54,13 +63,15 @@ export function DataProvider({ children }) {
     const [promo, setPromo] = useState(FALLBACK_PROMO);
     const [socialProof, setSocialProof] = useState(FALLBACK_SOCIAL_PROOF);
     const [waTemplates, setWATemplates] = useState(FALLBACK_WA);
+    const [reviews, setReviews] = useState(FALLBACK_REVIEWS);
+    const [faqs, setFaqs] = useState(FALLBACK_FAQS);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     const fetchAll = useCallback(async () => {
         try {
             setLoading(true);
-            const [s, subs, gms, bnds, secs, prom, sp, wat] = await Promise.all([
+            const [s, subs, gms, bnds, secs, prom, sp, wat, rvs, fqs] = await Promise.all([
                 axios.get(`${API}/store`),
                 axios.get(`${API}/subscriptions`),
                 axios.get(`${API}/games`),
@@ -69,6 +80,8 @@ export function DataProvider({ children }) {
                 axios.get(`${API}/promo`),
                 axios.get(`${API}/social-proof`),
                 axios.get(`${API}/wa-templates`),
+                axios.get(`${API}/reviews`),
+                axios.get(`${API}/faqs`),
             ]);
             setStore(s.data);
             setSubscriptions(subs.data);
@@ -78,6 +91,8 @@ export function DataProvider({ children }) {
             setPromo(prom.data || FALLBACK_PROMO);
             setSocialProof(sp.data || FALLBACK_SOCIAL_PROOF);
             setWATemplates(wat.data || FALLBACK_WA);
+            setReviews(rvs.data && rvs.data.length ? rvs.data : FALLBACK_REVIEWS);
+            setFaqs(fqs.data && fqs.data.length ? fqs.data : FALLBACK_FAQS);
             setError(null);
         } catch (e) {
             console.warn("DataProvider: API fetch failed, using fallback", e?.message);
@@ -102,6 +117,8 @@ export function DataProvider({ children }) {
                 promo,
                 socialProof,
                 waTemplates,
+                reviews,
+                faqs,
                 loading,
                 error,
                 reload: fetchAll,

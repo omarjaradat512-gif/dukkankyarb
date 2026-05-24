@@ -33,6 +33,22 @@ export const apiGetStore = () => client.get("/store").then((r) => r.data);
 export const apiGetSubscriptions = () => client.get("/subscriptions").then((r) => r.data);
 export const apiGetGames = () => client.get("/games").then((r) => r.data);
 export const apiGetBundles = () => client.get("/bundles").then((r) => r.data);
+export const apiGetReviews = () => client.get("/reviews").then((r) => r.data);
+export const apiGetFaqs = () => client.get("/faqs").then((r) => r.data);
+
+// Admin: Reviews
+export const apiCreateReview = (data) => client.post("/admin/reviews", data).then((r) => r.data);
+export const apiUpdateReview = (id, data) => client.put(`/admin/reviews/${id}`, data).then((r) => r.data);
+export const apiDeleteReview = (id) => client.delete(`/admin/reviews/${id}`).then((r) => r.data);
+
+// Admin: FAQs
+export const apiCreateFaq = (data) => client.post("/admin/faqs", data).then((r) => r.data);
+export const apiUpdateFaq = (id, data) => client.put(`/admin/faqs/${id}`, data).then((r) => r.data);
+export const apiDeleteFaq = (id) => client.delete(`/admin/faqs/${id}`).then((r) => r.data);
+
+// Admin: Change Password
+export const apiChangePassword = (current_password, new_password) =>
+    client.put("/admin/change-password", { current_password, new_password }).then((r) => r.data);
 
 // Auth
 export const apiLogin = (email, password) =>
