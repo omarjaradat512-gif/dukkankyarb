@@ -1,0 +1,37 @@
+{
+  "summary": "Validated the pure backend refactor (server.py -> server.py + core.py + models.py). Full pytest suite executed; the 4 refactor-tracked test files pass 71/71 — identical to pre-refactor baseline. All required endpoints behave the same: auth login, /api/auth/me (fresh JWT), /api/content GET+PUT, /api/admin/notify-requests, /api/admin/analytics, /api/admin/audit, /api/subscriptions (bundleDiscountPct), reviews/faqs CRUD, change-password (iat invalidation), and login rate-limiter. Admin password remains omar512@@OoD at end of run.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "tests/backend_test.py::TestSections::test_get_sections_default_or_persisted", "issue": "Pre-existing flaky assertion `len(items) == 9`. The app default is now 10 sections (or another test in the same file PUTs 10 and doesn't restore). Test passes in isolation, fails when run after sibling tests. NOT a refactor regression."},
+      {"endpoint": "/api/auth/login (rate-limit tests)", "issue": "test_auth_security.py rate-limit tests can flake if backend is not restarted between full runs because the rate-limit window persists in-memory; restarting backend (or waiting cooldown) restores 71/71."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_auth_security.py",
+    "/app/backend/tests/test_content_cms.py",
+    "/app/backend/tests/test_notify_analytics_bundle.py",
+    "/app/backend/tests/test_reviews_faqs_password.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Optional, pre-existing) Fix tests/backend_test.py::TestSections::test_get_sections_default_or_persisted — either bump the expected count to match current default OR add cleanup to a sibling test that mutates sections.",
+    "(Optional) Consider adding an auto-reset of in-memory rate-limit state at test session start so consecutive full pytest runs don't need a backend restart."
+  ],
+  "critical_code_review_comments": [
+    "Refactor is clean: routes/startup in server.py (~939 lines), shared infra in core.py (~163 lines, includes JWT iat-invalidation, login rate-limit helpers, audit-log helper, password hashing), schemas in models.py (~122 lines). Separation of concerns is sound.",
+    "core.py login rate-limiter is in-memory (per-process). This is fine for single-process supervisor setup but would break under multi-worker / horizontal scaling — flag for future-prod hardening (move to Mongo/Redis-backed counters).",
+    "JWT iat-based invalidation after password change works correctly (verified via test_reviews_faqs_password.py::TestChangePassword and audit checks)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py — fixed stale REACT_APP_BACKEND_URL fallback (was pointing to web-polish-21.preview.emergentagent.com which returns 404; now points to dukkankka-shop.preview.emergentagent.com). Note: pytest uses env var when set; fallback only used if env var absent."
+  ],
+  "success_rate": {"backend": "100% (71/71 on the 4 refactor-tracked files); 109/110 across the full suite (1 pre-existing flake in legacy backend_test.py)", "frontend": "skipped per request"},
+  "test_credentials": "admin@dukkank.com / omar512@@OoD (unchanged at end of run, confirmed via final login -> 200)",
+  "seed_data_creation": "None. Tests use existing seeded admin and self-clean via CRUD round-trips.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run `sudo supervisorctl restart backend` before invoking the full pytest suite to clear in-memory rate-limiter state from prior runs. The 4 refactor-critical files (test_auth_security, test_content_cms, test_notify_analytics_bundle, test_reviews_faqs_password) are the canonical 71-test regression set. The 1 failure in tests/backend_test.py::TestSections is a known pre-existing flake unrelated to the refactor."
+}
