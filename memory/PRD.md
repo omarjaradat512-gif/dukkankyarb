@@ -1,63 +1,69 @@
 # PRD — دُكانك (Dukkank)
 
-## Status: 6 iterations completed
-- **Iter 1-5**: Admin panel basics, dark mode, wishlist, notify-when-available, bundle discount per duration, analytics
-- **Iter 6 (current)**: **Full CMS** — every static page text editable from admin in a beautiful section-by-section tab
+## Status: 7 iterations completed
+- **Iter 1-6**: Admin panel, dark mode, wishlist, notify-when-available, analytics, full CMS
+- **Iter 7 (current)**: Security hardening (rate limit + JWT invalidation) + UX (mobile nav + games search/filter/sort/pagination) + backend refactor (split into 3 modules)
 
-## Iter 6 Changes (Site Content CMS)
-- **Backend**: New `site_content` document in MongoDB settings collection, 11 sections (hero, essential, extra, comparison, bundles, bundleBuilder, games, reviews, faq, emailSignup, footer). GET `/api/content` (public) + PUT `/api/admin/content` (admin). Whitelist + audit log integration.
-- **Frontend**: All static text strings replaced with `content.section.field` reads. Components updated: Hero, App.js section renderers, Bundles, BundleBuilder, ComparisonTable, Reviews, FAQ.
-- **New Admin Tab "محتوى الموقع" (ContentTab)**: Accordion per section (collapsible), per-section save (not all-or-nothing). Field types supported:
-  - `text` (single line)
-  - `textarea` (multi-line)
-  - `array-string` (e.g. featureBullets) with add/remove/reorder
-  - `array-row` (e.g. comparison.rows) with editable columns including bool toggles for ✓/✗ per plan
-- **Migration**: backfills missing top-level + sub-keys on existing data so new fields don't appear blank.
+## Iter 7 Changes
+
+### 🔴 Critical Fixes
+1. **Login Rate Limiting** — 8 failed attempts per IP per 15 minutes → 429 with Retry-After header. Successful login resets counter. (In-memory; swap to Redis for multi-process)
+2. **JWT Invalidation on Password Change** — All tokens carry `iat` claim; tokens with `iat < user.password_changed_at` are rejected. Change-password issues a fresh token so the current session stays alive. Stolen tokens become useless immediately.
+3. **Mobile Nav Drawer** — Hamburger button on screens < md (768px) opens a right-side Sheet with all section links. Auto-closes on link click.
+4. **Games Pagination** — Show 12 per page + "عرض المزيد" button (lazy-render approach). Lazy image loading already present (`loading="lazy"`).
+5. **Backend Refactor** — `server.py` split into 3 files:
+   - `server.py` (939 lines) — routes + startup
+   - `core.py` (163 lines) — DB, JWT, rate limit, audit log, hashing
+   - `models.py` (122 lines) — all Pydantic schemas
+
+### 🟡 UX Improvements
+6. **Games Search Bar** — fuzzy substring match on name + tagline + tags
+7. **Filter Panel** — collapsible, with 3 groups: Platform (PS4/PS5/All), Availability (All/Available), Sort (default/price asc/price desc/name/available-first)
+8. **Active Filters Indicator** — badge count on filter button + result count + "مسح كل الفلاتر" quick action
 
 ## Architecture
 - Backend: FastAPI + Motor (MongoDB) + JWT bcrypt + StaticFiles
 - Frontend: React (CRA) + Tailwind + shadcn/ui + react-router-dom v7 + recharts. Arabic RTL.
-- Auth: Bearer JWT 24h. Admin seeded from env.
+- Auth: Bearer JWT 24h with iat-based invalidation. Admin seeded from env. Rate-limited login.
 - Theme: CSS-variable based light/dark. Default = light.
 
-## Admin Panel — 13 tabs total
-1. **الإحصائيات** — KPI cards + recharts
-2. **محتوى الموقع** *(new)* — full CMS for all page text
-3. **إعدادات المتجر** — name/tagline/whatsapp/instagram
-4. **ترتيب الأقسام** — drag/visibility
-5. **الاشتراكات** — names, durations (prices PS4/PS5 + bundleDiscountPct)
-6. **الألعاب** — CRUD + image upload + preview
-7. **الباقات** — bundle CRUD
-8. **التقييمات** — CRUD with star picker
-9. **الأسئلة الشائعة** — CRUD with 10 icon picker
-10. **التسويق** — Promo, Social Proof, WhatsApp Templates, Subscribers
-11. **طلبات الإشعار** — grouped by game + WhatsApp deep-link
-12. **سجل التدقيق** — last N admin actions
-13. **الحساب** — change password
+## Admin Panel — 13 tabs
+1. الإحصائيات (analytics)
+2. محتوى الموقع (CMS) — 11 sections fully editable
+3. إعدادات المتجر
+4. ترتيب الأقسام
+5. الاشتراكات (with per-duration bundleDiscountPct)
+6. الألعاب
+7. الباقات
+8. التقييمات
+9. الأسئلة الشائعة
+10. التسويق
+11. طلبات الإشعار
+12. سجل التدقيق
+13. الحساب (change password)
 
-## Backend Endpoints
-- Public: `/api/{store,subscriptions,games,bundles,sections,promo,social-proof,wa-templates,reviews,faqs,content}`
-- Public actions: `/api/subscribers` POST, `/api/notify-requests` POST, `/api/events/cart-add` POST
-- Auth: `/api/auth/{login,me}`
-- Admin: `/api/admin/{content,store,sections,subscriptions/*,games/*,bundles/*,reviews/*,faqs/*,notify-requests/*,promo,social-proof,wa-templates,subscribers/*,upload,audit,change-password,analytics}`
+## Frontend Features
+- Hero, Recommender quiz, Subscriptions (PS+ Essential/Extra)
+- Bundles, BundleBuilder (with admin-config discount %)
+- **Games**: search + filter + sort + pagination + wishlist heart + notify-me dialog for unavailable
+- Reviews (CMS), FAQ (CMS), Comparison table (CMS), EmailSignup, Footer (CMS)
+- Cart + WhatsApp checkout
+- **Mobile**: hamburger nav drawer, all features touch-friendly
+- **Dark mode** toggle in header
 
-## Tests (cumulative)
-- **Iter 6 CMS: 21/21 ✅** — content endpoints, partial updates, auth gates, audit log, array shapes
-- **Iter 5: 22/22 ✅** still pass — notify, cart events, analytics, bundleDiscountPct
-- **Iter 4: 20/20 ✅** still pass — reviews, faqs, change-password
-- **Iter 1-3: 39/39 ✅** still pass — base endpoints
-- **Total: 102/102 backend tests passing**
+## Tests
+- **71/71 backend tests passing** ✅ (after refactor, identical to pre-refactor baseline)
+- 109/110 total when including legacy `backend_test.py` (1 pre-existing flaky test unrelated to refactor)
+- Test files: test_auth_security.py, test_content_cms.py, test_notify_analytics_bundle.py, test_reviews_faqs_password.py
 
 ## Test Credentials
 `/app/memory/test_credentials.md` — admin@dukkank.com / omar512@@OoD
 
-## Backlog
-- P2: SendGrid/Resend email integration for discount codes & order notifications
-- P2: Token invalidation on password change
-- P2: Rate limiting on POST `/api/events/cart-add` to prevent analytics abuse
-- P2: Phone/email validation on `/api/notify-requests`
-- P2: Deep-merge for content sub-keys (currently full-section overwrite — safe today since FE sends full section, but more robust would be sub-key whitelist)
-- P3: Split server.py into routers (~1080 lines now)
+## Backlog (P2/P3 — not blocking)
+- P2: Replace in-memory rate-limiter with Redis-backed for multi-process safety
+- P2: Email integration (SendGrid/Resend) for discount codes & notify-when-available alerts
+- P2: Server-side pagination on /api/games once catalog > 500 items
 - P3: Multi-admin support + roles
 - P3: PWA / offline mode
-- P3: Per-section Pydantic models for richer content validation
+- P3: Further split server.py into routers/ package
+- P3: Fix the 1 flaky legacy test in backend_test.py::TestSections
